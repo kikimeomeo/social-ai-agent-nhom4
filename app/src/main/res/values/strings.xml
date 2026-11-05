@@ -1,0 +1,81 @@
+<resources>
+    <string name="app_name">SocialAI</string>
+    <string name="app_tagline">Mobile AI Agent Quản Lý Mạng Xã Hội</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Tổng quan</string>
+    <string name="nav_create">AI Studio</string>
+    <string name="nav_inbox">Hộp thư</string>
+    <string name="nav_analytics">Tăng trưởng</string>
+    <string name="nav_settings">Cài đặt</string>
+
+    <!-- Home Screen -->
+    <string name="home_title">SocialAI Studio</string>
+    <string name="home_subtitle">Trợ lý AI xây dựng kênh cá nhân của bạn</string>
+    <string name="connected_channels">Kênh Đang Hoạt Động</string>
+    <string name="quick_kpis">Chỉ Số Tuần Này</string>
+    <string name="kpi_posts_created">Bài Đã Tạo</string>
+    <string name="kpi_engagement">Tương Tác</string>
+    <string name="kpi_pending_comments">Chờ Trả Lời</string>
+    <string name="recent_posts">Bài Viết Gần Đây</string>
+    <string name="view_all">Xem tất cả</string>
+    <string name="btn_create_post">Tạo bài mới bằng AI</string>
+
+    <!-- Create Post Screen -->
+    <string name="create_title">AI Content Studio</string>
+    <string name="create_step1">Bước 1: Nhập ý tưởng</string>
+    <string name="create_step2">Bước 2: AI Pipeline</string>
+    <string name="create_step3">Bước 3: Duyệt &amp; Đăng</string>
+    <string name="topic_hint">Nhập chủ đề, tin tức hoặc ý tưởng cần chia sẻ (VD: 5 xu hướng AI 2026)...</string>
+    <string name="select_tone">Chọn giọng văn:</string>
+    <string name="tone_expert">Chuyên gia</string>
+    <string name="tone_humorous">Hài hước</string>
+    <string name="tone_friendly">Thân thiện</string>
+    <string name="target_channels">Kênh phát hành:</string>
+    <string name="channel_facebook">Facebook Page</string>
+    <string name="channel_linkedin">LinkedIn</string>
+    <string name="btn_start_ai">Bắt đầu sinh bài viết</string>
+    <string name="btn_cancel">Hủy bỏ</string>
+    <string name="btn_publish">Đăng ngay lên các kênh</string>
+    <string name="btn_save_draft">Lưu nháp offline</string>
+
+    <!-- Inbox Screen -->
+    <string name="inbox_title">Hộp Thư Tương Tác</string>
+    <string name="inbox_subtitle">Gom phản hồi từ Facebook &amp; LinkedIn</string>
+    <string name="filter_all">Tất cả</string>
+    <string name="filter_facebook">Facebook</string>
+    <string name="filter_linkedin">LinkedIn</string>
+    <string name="badge_praise">Khen ngợi</string>
+    <string name="badge_question">Câu hỏi</string>
+    <string name="badge_negative">Tiêu cực / Cảnh báo</string>
+    <string name="badge_spam">Spam</string>
+    <string name="ai_suggested_reply">Gợi ý phản hồi từ AI:</string>
+    <string name="safety_alert_title">CẢNH BÁO AN TOÀN AI</string>
+    <string name="safety_alert_msg">Comment này có dấu hiệu tiêu cực hoặc rủi ro thương hiệu. Hệ thống đã khóa tự động trả lời để tránh phát ngôn sai lệch. Bạn vui lòng tự xem xét và phản hồi thủ công.</string>
+    <string name="btn_send_reply">Gửi phản hồi</string>
+
+    <!-- Analytics Screen -->
+    <string name="analytics_title">Thống Kê Tăng Trưởng</string>
+    <string name="analytics_subtitle">Hiệu suất và đề xuất tuần từ AI</string>
+    <string name="chart_header">Tương tác 7 ngày qua</string>
+    <string name="channel_comparison">So Sánh 2 Kênh</string>
+    <string name="col_channel">Kênh</string>
+    <string name="col_reach">Reach</string>
+    <string name="col_likes">Like</string>
+    <string name="col_comments">Comment</string>
+    <string name="col_rate">Tỉ lệ</string>
+    <string name="ai_weekly_report">Báo Cáo Tuần Do AI Tóm Tắt</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Cài Đặt &amp; BYOK</string>
+    <string name="settings_channels">Tài Khoản Mạng Xã Hội</string>
+    <string name="settings_llm">Cấu Hình LLM (BYOK)</string>
+    <string name="demo_mode">Chế độ Demo (Không cần key)</string>
+    <string name="demo_mode_desc">Sinh dữ liệu mẫu thực tế, streaming mượt mà mà không tốn token</string>
+    <string name="llm_provider">Nhà cung cấp LLM</string>
+    <string name="api_key_hint">Nhập API Key (VD: sk-… hoặc AIzaSy…)</string>
+    <string name="btn_save_key">Lưu khóa bí mật</string>
+    <string name="token_stats">Giám Sát Chi Phí &amp; Token</string>
+    <string name="tokens_used">Token đã tiêu thụ:</string>
+    <string name="cost_estimate">Chi phí ước tính:</string>
+</resources>

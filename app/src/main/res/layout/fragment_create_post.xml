@@ -1,0 +1,823 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_main"
+    android:orientation="vertical">
+
+    <!-- Top App Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card_bg"
+        android:elevation="2dp"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AI Content Studio"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <!-- Stepper Indicator -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvStepBadge1"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_badge_rounded"
+                android:backgroundTint="@color/primary"
+                android:gravity="center"
+                android:text="1"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStepLabel1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Nhập liệu"
+                android:textColor="@color/primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <View
+                android:id="@+id/lineStep1"
+                android:layout_width="0dp"
+                android:layout_height="2dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:background="@color/stepper_inactive" />
+
+            <TextView
+                android:id="@+id/tvStepBadge2"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_badge_rounded"
+                android:backgroundTint="@color/stepper_inactive"
+                android:gravity="center"
+                android:text="2"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStepLabel2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="AI Sinh bài"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+
+            <View
+                android:id="@+id/lineStep2"
+                android:layout_width="0dp"
+                android:layout_height="2dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:background="@color/stepper_inactive" />
+
+            <TextView
+                android:id="@+id/tvStepBadge3"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_badge_rounded"
+                android:backgroundTint="@color/stepper_inactive"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStepLabel3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Duyệt bài"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- ================= BƯỚC 1: NHẬP LIỆU ================= -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/containerStep1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Topic Input Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/card_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="1dp"
+                    app:strokeColor="@color/card_stroke"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Chủ đề / Ý tưởng bài viết:"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            app:boxBackgroundColor="@color/bg_main"
+                            app:boxCornerRadiusBottomEnd="10dp"
+                            app:boxCornerRadiusBottomStart="10dp"
+                            app:boxCornerRadiusTopEnd="10dp"
+                            app:boxCornerRadiusTopStart="10dp"
+                            app:boxStrokeColor="@color/primary">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etTopic"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="top|start"
+                                android:hint="@string/topic_hint"
+                                android:lines="4"
+                                android:maxLines="6"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Topic Quick Suggestion Chips -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Gợi ý chủ đề thịnh hành:"
+                            android:textColor="@color/text_muted"
+                            android:textSize="12sp" />
+
+                        <HorizontalScrollView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:scrollbars="none">
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <TextView
+                                    android:id="@+id/chipSuggest1"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginEnd="6dp"
+                                    android:background="@drawable/bg_badge_rounded"
+                                    android:backgroundTint="@color/primary_light"
+                                    android:padding="8dp"
+                                    android:text="💡 5 Xu hướng AI 2026"
+                                    android:textColor="@color/primary"
+                                    android:textSize="12sp" />
+
+                                <TextView
+                                    android:id="@+id/chipSuggest2"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginEnd="6dp"
+                                    android:background="@drawable/bg_badge_rounded"
+                                    android:backgroundTint="@color/primary_light"
+                                    android:padding="8dp"
+                                    android:text="🤖 On-Device AI Android"
+                                    android:textColor="@color/primary"
+                                    android:textSize="12sp" />
+
+                                <TextView
+                                    android:id="@+id/chipSuggest3"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/bg_badge_rounded"
+                                    android:backgroundTint="@color/primary_light"
+                                    android:padding="8dp"
+                                    android:text="🚀 Tự động hóa Social Media"
+                                    android:textColor="@color/primary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                        </HorizontalScrollView>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Tone Selection Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    app:cardBackgroundColor="@color/card_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="1dp"
+                    app:strokeColor="@color/card_stroke"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Giọng văn (Tone of Voice):"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/chipGroupTone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipToneExpert"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:text="Chuyên gia" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipToneHumorous"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Hài hước" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipToneFriendly"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Thân thiện" />
+                        </com.google.android.material.chip.ChipGroup>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Channels Selection Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    app:cardBackgroundColor="@color/card_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="1dp"
+                    app:strokeColor="@color/card_stroke"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Kênh xuất bản:"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.checkbox.MaterialCheckBox
+                            android:id="@+id/cbFacebook"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:checked="true"
+                            android:text="Facebook Page (Tối ưu tương tác &amp; Hashtag)"
+                            android:textColor="@color/text_primary" />
+
+                        <com.google.android.material.checkbox.MaterialCheckBox
+                            android:id="@+id/cbLinkedIn"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="LinkedIn (Tối ưu B2B &amp; Thought Leadership)"
+                            android:textColor="@color/text_primary" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Submit Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStartGenerate"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="32dp"
+                    android:text="Bắt đầu sinh bài viết"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_sparkles"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/white" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- ================= BƯỚC 2: AI PIPELINE (MÔ PHỎNG TYPEWRITER) ================= -->
+        <LinearLayout
+            android:id="@+id/containerStep2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <!-- Active Step Status Banner -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/primary_light"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <ProgressBar
+                        android:id="@+id/pbPipeline"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:indeterminateTint="@color/primary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvCurrentAgent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Master Orchestrator"
+                            android:textColor="@color/primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvPipelineStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Đang phân tích đề tài &amp; tạo brief..."
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Live Streaming Preview Terminal -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="DÒNG CHẢY SINH CHỮ TRỰC TIẾP (TYPEWRITER STREAM):"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:letterSpacing="0.05" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="1dp"
+                app:strokeColor="@color/card_stroke"
+                app:strokeWidth="1dp">
+
+                <androidx.core.widget.NestedScrollView
+                    android:id="@+id/scrollStream"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/tvLiveStreamOutput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        tools:text="[Facebook Agent]: Đang soạn thảo hook mở đầu...\n🚀 5 XU HƯỚNG AI 2026..." />
+                </androidx.core.widget.NestedScrollView>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Pipeline Action Controls -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancelPipeline"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:text="Hủy bỏ"
+                    android:textColor="@color/status_red"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/status_red" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSkipToReview"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:text="Xem trước ngay"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="10dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ================= BƯỚC 3: DUYỆT & ĐĂNG BÀI (REVIEW SCREEN) ================= -->
+        <LinearLayout
+            android:id="@+id/containerStep3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- Tab Switcher: Facebook vs LinkedIn -->
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabPlatformReview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/card_bg"
+                app:tabIndicatorColor="@color/primary"
+                app:tabSelectedTextColor="@color/primary"
+                app:tabTextColor="@color/text_secondary">
+
+                <com.google.android.material.tabs.TabItem
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Facebook Page" />
+
+                <com.google.android.material.tabs.TabItem
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LinkedIn" />
+            </com.google.android.material.tabs.TabLayout>
+
+            <androidx.core.widget.NestedScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- Platform Preview Card -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@color/card_bg"
+                        app:cardCornerRadius="14dp"
+                        app:cardElevation="1dp"
+                        app:strokeColor="@color/card_stroke"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <!-- Author Header -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:id="@+id/ivReviewPlatformIcon"
+                                    android:layout_width="36dp"
+                                    android:layout_height="36dp"
+                                    android:src="@drawable/ic_facebook" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:id="@+id/tvReviewAuthorName"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="AI Tech Vietnam"
+                                        android:textColor="@color/text_primary"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/tvReviewSubInfo"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Vừa xong • 🌐 Công khai"
+                                        android:textColor="@color/text_muted"
+                                        android:textSize="11sp" />
+                                </LinearLayout>
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnRetryCurrentChannel"
+                                    style="@style/Widget.Material3.Button.TextButton"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Chạy lại kênh này"
+                                    android:textColor="@color/primary"
+                                    android:textSize="11sp"
+                                    app:icon="@drawable/ic_refresh"
+                                    app:iconTint="@color/primary" />
+                            </LinearLayout>
+
+                            <!-- Quick AI Assistant Rewrite Buttons -->
+                            <HorizontalScrollView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:scrollbars="none">
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal">
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRewriteShorter"
+                                        style="@style/Widget.Material3.Button.OutlinedButton"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="38dp"
+                                        android:layout_marginEnd="6dp"
+                                        android:paddingStart="10dp"
+                                        android:paddingEnd="10dp"
+                                        android:text="✂️ Ngắn hơn"
+                                        android:textColor="@color/primary"
+                                        android:textSize="11sp"
+                                        app:cornerRadius="8dp"
+                                        app:strokeColor="@color/primary" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRewriteFormal"
+                                        style="@style/Widget.Material3.Button.OutlinedButton"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="38dp"
+                                        android:layout_marginEnd="6dp"
+                                        android:paddingStart="10dp"
+                                        android:paddingEnd="10dp"
+                                        android:text="👔 Trang trọng hơn"
+                                        android:textColor="@color/primary"
+                                        android:textSize="11sp"
+                                        app:cornerRadius="8dp"
+                                        app:strokeColor="@color/primary" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRewriteHook"
+                                        style="@style/Widget.Material3.Button.OutlinedButton"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="38dp"
+                                        android:paddingStart="10dp"
+                                        android:paddingEnd="10dp"
+                                        android:text="⚡ Đổi Hook mở đầu"
+                                        android:textColor="@color/primary"
+                                        android:textSize="11sp"
+                                        app:cornerRadius="8dp"
+                                        app:strokeColor="@color/primary" />
+                                </LinearLayout>
+                            </HorizontalScrollView>
+
+                            <!-- Editable Post Content -->
+                            <EditText
+                                android:id="@+id/etReviewContent"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:background="@null"
+                                android:fontFamily="sans-serif"
+                                android:gravity="top|start"
+                                android:lineSpacingExtra="3dp"
+                                android:minLines="5"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+
+                            <!-- AI Content Safety Warning Card -->
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/cardContentWarning"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:visibility="gone"
+                                app:cardBackgroundColor="@color/status_amber_bg"
+                                app:cardCornerRadius="10dp"
+                                app:cardElevation="0dp"
+                                app:strokeColor="@color/status_amber"
+                                app:strokeWidth="1dp">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center_vertical"
+                                    android:orientation="horizontal"
+                                    android:padding="10dp">
+
+                                    <ImageView
+                                        android:layout_width="18dp"
+                                        android:layout_height="18dp"
+                                        android:src="@drawable/ic_alert_triangle"
+                                        app:tint="@color/status_amber" />
+
+                                    <TextView
+                                        android:id="@+id/tvContentWarningText"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginStart="8dp"
+                                        android:text="Cảnh báo: Phát hiện cụm từ nhạy cảm hoặc thiếu nguồn dẫn."
+                                        android:textColor="#B45309"
+                                        android:textSize="11sp" />
+                                </LinearLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <!-- Character Counter -->
+                            <TextView
+                                android:id="@+id/tvCharCounter"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:gravity="end"
+                                android:text="450 / 63,206 ký tự"
+                                android:textColor="@color/text_muted"
+                                android:textSize="11sp" />
+
+                            <!-- AI Illustration Frame -->
+                            <RelativeLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="180dp"
+                                android:layout_marginTop="12dp"
+                                android:background="@drawable/bg_image_placeholder">
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_centerInParent="true"
+                                    android:gravity="center"
+                                    android:orientation="vertical">
+
+                                    <ImageView
+                                        android:layout_width="32dp"
+                                        android:layout_height="32dp"
+                                        android:src="@drawable/ic_sparkles"
+                                        app:tint="@color/white" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="6dp"
+                                        android:text="Ảnh minh họa sinh từ AI Visual Agent"
+                                        android:textColor="@color/white"
+                                        android:textSize="13sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/tvImagePromptPreview"
+                                        android:layout_width="260dp"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="2dp"
+                                        android:ellipsize="end"
+                                        android:gravity="center"
+                                        android:maxLines="2"
+                                        android:text="3D cinematic tech illustration"
+                                        android:textColor="#E0E7FF"
+                                        android:textSize="11sp" />
+                                </LinearLayout>
+                            </RelativeLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Bottom Action Buttons: Multi-channel Publish & Save Draft (F5 Spec) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:layout_marginBottom="32dp"
+                        android:orientation="vertical">
+
+                        <!-- Nút chính F5: ĐĂNG ĐỒNG THỜI LÊN CÁC KÊNH MẠNG XÃ HỘI -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPublishNow"
+                            android:layout_width="match_parent"
+                            android:layout_height="54dp"
+                            android:text="🚀 Xuất bản tự động lên các kênh (F5)"
+                            android:textColor="@color/white"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/primary"
+                            app:cornerRadius="12dp"
+                            app:icon="@drawable/ic_send"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/white" />
+
+                        <!-- Nút Lưu nháp offline -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSaveDraft"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="10dp"
+                            android:text="💾 Lưu nháp offline"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/card_stroke" />
+
+                        <!-- Nút phụ: Chia sẻ ra ứng dụng ngoài (Share Sheet) -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnShareToRealApp"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:layout_marginTop="4dp"
+                            android:text="📤 Chia sẻ ra ứng dụng ngoài (Share Sheet)"
+                            android:textColor="@color/text_secondary"
+                            app:cornerRadius="12dp" />
+
+                        <!-- Nút phụ: Meta Graph API (Optional Direct API) -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPublishMetaApi"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:text="🌐 Cấu hình Direct Meta Graph API (Nâng cao)"
+                            android:textColor="@color/facebook_blue"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>
+
