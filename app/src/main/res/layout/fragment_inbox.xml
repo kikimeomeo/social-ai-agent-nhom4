@@ -62,6 +62,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="LinkedIn" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipFilterThreads"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Threads" />
         </com.google.android.material.chip.ChipGroup>
 
         <!-- Controlled Auto-Reply Bot Action Button (F6) -->
