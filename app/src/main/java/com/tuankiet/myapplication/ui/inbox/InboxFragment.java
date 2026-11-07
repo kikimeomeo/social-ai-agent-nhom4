@@ -166,6 +166,8 @@ public class InboxFragment extends Fragment {
                 adapter.applyFilter("FACEBOOK");
             } else if (checkedIds.contains(R.id.chipFilterLinkedIn)) {
                 adapter.applyFilter("LINKEDIN");
+            } else if (checkedIds.contains(R.id.chipFilterThreads)) { // Bổ sung xử lý lọc Threads
+                adapter.applyFilter("THREADS");
             } else {
                 adapter.applyFilter("ALL");
             }
