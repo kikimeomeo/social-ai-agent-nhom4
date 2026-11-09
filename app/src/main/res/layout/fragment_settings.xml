@@ -368,6 +368,7 @@
                         android:textStyle="bold" />
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilApiKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
@@ -388,15 +389,66 @@
                             android:textSize="13sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnSaveApiKey"
+                    <!-- Link to Get Free Gemini API Key -->
+                    <TextView
+                        android:id="@+id/tvGetApiKeyLink"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:paddingVertical="4dp"
+                        android:text="🔗 Chưa có Key? Lấy API Key miễn phí tại Google AI Studio ↗"
+                        android:textColor="@color/primary"
+                        android:textSize="12sp"
+                        android:textStyle="italic" />
+
+                    <!-- Status Display for API Key Validation -->
+                    <TextView
+                        android:id="@+id/tvApiKeyStatus"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginTop="14dp"
-                        android:text="Lưu cấu hình LLM"
-                        android:textColor="@color/white"
-                        app:backgroundTint="@color/primary"
-                        app:cornerRadius="10dp" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_badge_rounded"
+                        android:backgroundTint="@color/bg_main"
+                        android:padding="10dp"
+                        android:text="Trạng thái Key: Chưa kết nối API Key"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+
+                    <!-- Action Buttons: Validate & Save -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnValidateApiKey"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="🔍 Kiểm Tra Key"
+                            android:textColor="@color/primary"
+                            android:textSize="12sp"
+                            app:cornerRadius="10dp"
+                            app:strokeColor="@color/primary" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSaveApiKey"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:text="💾 Lưu Cấu Hình"
+                            android:textColor="@color/white"
+                            app:backgroundTint="@color/primary"
+                            app:cornerRadius="10dp" />
+                    </LinearLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
