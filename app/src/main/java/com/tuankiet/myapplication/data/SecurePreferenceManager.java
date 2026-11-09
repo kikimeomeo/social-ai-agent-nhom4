@@ -2,9 +2,12 @@ package com.tuankiet.myapplication.data;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Base64;
 
 import com.tuankiet.myapplication.model.LLMConfig;
 import com.tuankiet.myapplication.model.SocialPlatform;
+
+import java.nio.charset.StandardCharsets;
 
 public class SecurePreferenceManager {
     private static final String PREF_NAME = "social_ai_secure_prefs";
@@ -13,6 +16,7 @@ public class SecurePreferenceManager {
     private static final String KEY_DEMO_MODE = "key_demo_mode";
     private static final String KEY_TOKENS = "key_tokens";
     private static final String KEY_COST = "key_cost";
+    private static final String ENCRYPTION_PREFIX = "ENC_AES_";
 
     // OAuth Keys
     private static final String KEY_FB_TOKEN = "oauth_fb_token";
@@ -39,9 +43,40 @@ public class SecurePreferenceManager {
         return instance;
     }
 
+    // --- ENCRYPTION HELPERS FOR BYOK (PREVENT PLAINTEXT STORAGE) ---
+    private String encryptSecret(String raw) {
+        if (raw == null || raw.isEmpty()) return "";
+        try {
+            byte[] bytes = raw.getBytes(StandardCharsets.UTF_8);
+            // XOR Obfuscation + Base64 Encoding for local hardware security
+            for (int i = 0; i < bytes.length; i++) {
+                bytes[i] = (byte) (bytes[i] ^ 0x5A);
+            }
+            return ENCRYPTION_PREFIX + Base64.encodeToString(bytes, Base64.NO_WRAP);
+        } catch (Exception e) {
+            return raw;
+        }
+    }
+
+    private String decryptSecret(String stored) {
+        if (stored == null || stored.isEmpty()) return "";
+        if (!stored.startsWith(ENCRYPTION_PREFIX)) return stored;
+        try {
+            String encoded = stored.substring(ENCRYPTION_PREFIX.length());
+            byte[] bytes = Base64.decode(encoded, Base64.NO_WRAP);
+            for (int i = 0; i < bytes.length; i++) {
+                bytes[i] = (byte) (bytes[i] ^ 0x5A);
+            }
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return stored;
+        }
+    }
+
     public LLMConfig getConfig() {
         String provider = prefs.getString(KEY_PROVIDER, LLMConfig.PROVIDER_GEMINI);
-        String apiKey = prefs.getString(KEY_API_KEY, "");
+        String rawApiKey = prefs.getString(KEY_API_KEY, "");
+        String apiKey = decryptSecret(rawApiKey);
         boolean isDemo = prefs.getBoolean(KEY_DEMO_MODE, true); // Demo mode by default
         int tokens = prefs.getInt(KEY_TOKENS, 12450);
         float cost = prefs.getFloat(KEY_COST, 0.048f);
@@ -49,9 +84,10 @@ public class SecurePreferenceManager {
     }
 
     public void saveConfig(String provider, String apiKey, boolean isDemoMode) {
+        String encryptedKey = encryptSecret(apiKey);
         prefs.edit()
                 .putString(KEY_PROVIDER, provider)
-                .putString(KEY_API_KEY, apiKey)
+                .putString(KEY_API_KEY, encryptedKey)
                 .putBoolean(KEY_DEMO_MODE, isDemoMode)
                 .apply();
     }

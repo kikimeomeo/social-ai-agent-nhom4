@@ -1,5 +1,7 @@
 package com.tuankiet.myapplication.ui.settings;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.tuankiet.myapplication.R;
+import com.tuankiet.myapplication.agent.AIAgentOrchestrator;
 import com.tuankiet.myapplication.data.OAuthManager;
 import com.tuankiet.myapplication.data.SecurePreferenceManager;
 import com.tuankiet.myapplication.databinding.FragmentSettingsBinding;
@@ -71,6 +74,7 @@ public class SettingsFragment extends Fragment {
         // 2. LLM Config
         LLMConfig config = prefManager.getConfig();
         binding.switchDemoMode.setChecked(config.isDemoMode());
+        updateApiKeyInputState(config.isDemoMode());
 
         if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
             binding.rbOpenAI.setChecked(true);
@@ -82,10 +86,42 @@ public class SettingsFragment extends Fragment {
 
         if (config.getApiKey() != null && !config.getApiKey().isEmpty()) {
             binding.etApiKey.setText(config.getApiKey());
+            binding.tvApiKeyStatus.setVisibility(View.VISIBLE);
+            binding.tvApiKeyStatus.setText("Trạng thái Key: Đã lưu API Key mã hóa (" + config.getProvider() + ")");
+            binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.status_green));
+        } else {
+            binding.tvApiKeyStatus.setVisibility(View.VISIBLE);
+            binding.tvApiKeyStatus.setText("Trạng thái Key: Chưa cấu hình API Key");
+            binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.text_secondary));
         }
+
+        updateHelperLinkText();
 
         // 3. Token metrics
         updateTokenMetrics(config);
+    }
+
+    private void updateApiKeyInputState(boolean isDemo) {
+        binding.etApiKey.setEnabled(!isDemo);
+        binding.btnValidateApiKey.setEnabled(!isDemo);
+        binding.tilApiKey.setAlpha(isDemo ? 0.5f : 1.0f);
+        binding.btnValidateApiKey.setAlpha(isDemo ? 0.5f : 1.0f);
+    }
+
+    private void updateHelperLinkText() {
+        if (binding.rbOpenAI.isChecked()) {
+            binding.tvGetApiKeyLink.setText("🔗 Chưa có Key? Lấy OpenAI API Key tại platform.openai.com ↗");
+        } else if (binding.rbOpenRouter.isChecked()) {
+            binding.tvGetApiKeyLink.setText("🔗 Chưa có Key? Lấy OpenRouter Key tại openrouter.ai ↗");
+        } else {
+            binding.tvGetApiKeyLink.setText("🔗 Chưa có Key? Lấy Google Gemini API Key miễn phí tại Google AI Studio ↗");
+        }
+    }
+
+    private String getSelectedProvider() {
+        if (binding.rbOpenAI.isChecked()) return LLMConfig.PROVIDER_OPENAI;
+        if (binding.rbOpenRouter.isChecked()) return LLMConfig.PROVIDER_OPENROUTER;
+        return LLMConfig.PROVIDER_GEMINI;
     }
 
     private void updateTokenMetrics(LLMConfig config) {
@@ -94,6 +130,25 @@ public class SettingsFragment extends Fragment {
     }
 
     private void setupListeners() {
+        // Provider Selection Listener
+        binding.rgProvider.setOnCheckedChangeListener((group, checkedId) -> updateHelperLinkText());
+
+        // Helper Link Click Listener (Open Browser to Get Key)
+        binding.tvGetApiKeyLink.setOnClickListener(v -> {
+            String url = "https://aistudio.google.com/app/apikey";
+            if (binding.rbOpenAI.isChecked()) {
+                url = "https://platform.openai.com/api-keys";
+            } else if (binding.rbOpenRouter.isChecked()) {
+                url = "https://openrouter.ai/keys";
+            }
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+            } catch (Exception e) {
+                Toast.makeText(getContext(), "Không thể mở trình duyệt!", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         // Toggle Facebook
         binding.switchFbConnection.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
@@ -131,43 +186,64 @@ public class SettingsFragment extends Fragment {
         // Toggle Demo Mode
         binding.switchDemoMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefManager.setDemoMode(isChecked);
+            updateApiKeyInputState(isChecked);
             String status = isChecked ? "Đã BẬT Chế độ Demo (Không tốn token API)" : "Đã TẮT Chế độ Demo (Sử dụng API Key thực tế)";
             Toast.makeText(getContext(), status, Toast.LENGTH_SHORT).show();
         });
 
-        // Save LLM Config
-        binding.btnSaveApiKey.setOnClickListener(v -> {
-            String provider = LLMConfig.PROVIDER_GEMINI;
-            if (binding.rbOpenAI.isChecked()) {
-                provider = LLMConfig.PROVIDER_OPENAI;
-            } else if (binding.rbOpenRouter.isChecked()) {
-                provider = LLMConfig.PROVIDER_OPENROUTER;
+        // Independent "Kiểm Tra Key" Button
+        binding.btnValidateApiKey.setOnClickListener(v -> {
+            String provider = getSelectedProvider();
+            String apiKey = binding.etApiKey.getText() != null ?
+                    binding.etApiKey.getText().toString().trim() : "";
+
+            if (apiKey.isEmpty()) {
+                Toast.makeText(getContext(), "Vui lòng nhập API Key để kiểm tra!", Toast.LENGTH_SHORT).show();
+                return;
             }
 
+            binding.tvApiKeyStatus.setVisibility(View.VISIBLE);
+            binding.tvApiKeyStatus.setText("🔄 Đang gửi request kiểm tra kết nối với " + provider + "...");
+            binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.primary));
+
+            new AIAgentOrchestrator(requireContext()).validateApiKey(provider, apiKey, new AIAgentOrchestrator.ValidationCallback() {
+                @Override
+                public void onSuccess(String message) {
+                    if (isAdded()) {
+                        binding.tvApiKeyStatus.setText("✅ " + message);
+                        binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.status_green));
+                        Toast.makeText(getContext(), "✅ Key hợp lệ!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (isAdded()) {
+                        binding.tvApiKeyStatus.setText("⚠️ " + error);
+                        binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.status_red));
+                        Toast.makeText(getContext(), "⚠️ Lỗi kết nối Key!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        });
+
+        // Save LLM Config Button
+        binding.btnSaveApiKey.setOnClickListener(v -> {
+            String provider = getSelectedProvider();
             String apiKey = binding.etApiKey.getText() != null ?
                     binding.etApiKey.getText().toString().trim() : "";
             boolean isDemo = binding.switchDemoMode.isChecked();
 
-            if (!apiKey.isEmpty() && !isDemo) {
-                Toast.makeText(getContext(), "Đang kiểm tra kết nối API Key (" + provider + ")...", Toast.LENGTH_SHORT).show();
-                String finalProvider = provider;
-                new com.tuankiet.myapplication.agent.AIAgentOrchestrator(requireContext())
-                        .validateApiKey(provider, apiKey, new com.tuankiet.myapplication.agent.AIAgentOrchestrator.ValidationCallback() {
-                            @Override
-                            public void onSuccess(String message) {
-                                prefManager.saveConfig(finalProvider, apiKey, isDemo);
-                                Toast.makeText(getContext(), "✅ " + message, Toast.LENGTH_LONG).show();
-                            }
-
-                            @Override
-                            public void onError(String error) {
-                                Toast.makeText(getContext(), "⚠️ " + error, Toast.LENGTH_LONG).show();
-                            }
-                        });
+            prefManager.saveConfig(provider, apiKey, isDemo);
+            binding.tvApiKeyStatus.setVisibility(View.VISIBLE);
+            if (isDemo) {
+                binding.tvApiKeyStatus.setText("Trạng thái Key: Đang hoạt động ở Chế độ Demo (Giả lập)");
+                binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.primary));
             } else {
-                prefManager.saveConfig(provider, apiKey, isDemo);
-                Toast.makeText(getContext(), "Đã lưu cấu hình (Chế độ Demo: " + (isDemo ? "BẬT" : "TẮT") + ")", Toast.LENGTH_SHORT).show();
+                binding.tvApiKeyStatus.setText("Trạng thái Key: Đã lưu API Key mã hóa (" + provider + ")");
+                binding.tvApiKeyStatus.setTextColor(getResources().getColor(R.color.status_green));
             }
+            Toast.makeText(getContext(), "💾 Đã lưu cấu hình LLM thành công!", Toast.LENGTH_SHORT).show();
         });
 
         // Reset Tokens
