@@ -128,6 +128,23 @@ public class SettingsFragment extends Fragment {
             Toast.makeText(getContext(), "🎉 Đã lưu Threads Token thành công!", Toast.LENGTH_SHORT).show();
         });
 
+        // Disconnect Threads
+        binding.btnDisconnectThreads.setOnClickListener(v -> {
+            prefManager.clearThreadsToken();
+
+            binding.etSettingsThreadsToken.setText("");
+            binding.tvSettingsThreadsDesc.setText("Chưa cấu hình Token");
+            binding.tvSettingsThreadsDesc.setTextColor(
+                    getResources().getColor(R.color.text_secondary)
+            );
+
+            Toast.makeText(
+                    requireContext(),
+                    "Đã xóa Threads Token trên thiết bị!",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
         // Toggle Demo Mode
         binding.switchDemoMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefManager.setDemoMode(isChecked);

@@ -240,6 +240,17 @@
                             android:textColor="@color/primary"
                             android:textSize="12sp"
                             app:cornerRadius="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnDisconnectThreads"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginTop="8dp"
+                            android:text="Ngắt kết nối Threads"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            app:cornerRadius="8dp" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

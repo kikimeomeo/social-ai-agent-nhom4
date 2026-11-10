@@ -133,4 +133,10 @@ public class SecurePreferenceManager {
     public String getThreadsToken() {
         return prefs.getString(KEY_THREADS_TOKEN, "");
     }
+
+    public void clearThreadsToken() {
+        prefs.edit()
+                .remove(KEY_THREADS_TOKEN)
+                .apply();
+    }
 }
