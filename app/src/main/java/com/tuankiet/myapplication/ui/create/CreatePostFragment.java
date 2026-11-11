@@ -27,9 +27,11 @@ public class CreatePostFragment extends Fragment {
     private FragmentCreatePostBinding binding;
     private AIAgentOrchestrator orchestrator;
     private Post currentPost;
+    private int currentReviewPlatform = 0; // 0: Facebook, 1: Threads, 2: LinkedIn
     private boolean isViewingFacebookTab = true;
 
     private static final int FB_CHAR_LIMIT = 63206;
+    private static final int THREADS_CHAR_LIMIT = 500;
     private static final int LI_CHAR_LIMIT = 3000;
 
     @Nullable
@@ -79,21 +81,53 @@ public class CreatePostFragment extends Fragment {
 
     // --- STEP 1: NHẬP LIỆU ---
     private void setupStep1() {
-        binding.chipSuggest1.setOnClickListener(v -> binding.etTopic.setText("5 Xu hướng Trí tuệ Nhân tạo định hình 2026"));
-        binding.chipSuggest2.setOnClickListener(v -> binding.etTopic.setText("Tại sao On-Device AI là tương lai của Android Developer?"));
-        binding.chipSuggest3.setOnClickListener(v -> binding.etTopic.setText("Ứng dụng kiến trúc Multi-Agent trong tự động hóa Social Media"));
+        binding.chipSuggest1.setOnClickListener(v -> {
+            binding.etTopic.setText("5 Xu hướng Trí tuệ Nhân tạo định hình 2026");
+            if (binding.tilTopic != null) binding.tilTopic.setError(null);
+        });
+        binding.chipSuggest2.setOnClickListener(v -> {
+            binding.etTopic.setText("Tại sao On-Device AI là tương lai của Android Developer?");
+            if (binding.tilTopic != null) binding.tilTopic.setError(null);
+        });
+        binding.chipSuggest3.setOnClickListener(v -> {
+            binding.etTopic.setText("Ứng dụng kiến trúc Multi-Agent trong tự động hóa Social Media");
+            if (binding.tilTopic != null) binding.tilTopic.setError(null);
+        });
+
+        // Clear error as user types
+        binding.etTopic.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (binding.tilTopic != null && binding.tilTopic.getError() != null) {
+                    binding.tilTopic.setError(null);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
 
         binding.btnStartGenerate.setOnClickListener(v -> {
             String topic = binding.etTopic.getText() != null ? binding.etTopic.getText().toString().trim() : "";
             if (topic.isEmpty()) {
+                if (binding.tilTopic != null) {
+                    binding.tilTopic.setError("Vui lòng nhập chủ đề bài viết!");
+                }
+                binding.etTopic.requestFocus();
                 Toast.makeText(getContext(), "Vui lòng nhập chủ đề bài viết!", Toast.LENGTH_SHORT).show();
                 return;
+            } else {
+                if (binding.tilTopic != null) binding.tilTopic.setError(null);
             }
 
             boolean targetFb = binding.cbFacebook.isChecked();
+            boolean targetThreads = binding.cbThreads.isChecked();
             boolean targetLi = binding.cbLinkedIn.isChecked();
-            if (!targetFb && !targetLi) {
-                Toast.makeText(getContext(), "Vui lòng chọn ít nhất 1 kênh đăng!", Toast.LENGTH_SHORT).show();
+            if (!targetFb && !targetThreads && !targetLi) {
+                Toast.makeText(getContext(), "⚠️ Vui lòng chọn ít nhất 1 kênh đăng!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -104,7 +138,9 @@ public class CreatePostFragment extends Fragment {
                 tone = "Thân thiện";
             }
 
-            startPipeline(topic, tone, targetFb, targetLi);
+            String language = (binding.chipLangEn != null && binding.chipLangEn.isChecked()) ? "English" : "Tiếng Việt";
+
+            startPipeline(topic, tone, language, targetFb, targetThreads, targetLi);
         });
     }
 
@@ -124,11 +160,11 @@ public class CreatePostFragment extends Fragment {
         });
     }
 
-    private void startPipeline(String topic, String tone, boolean targetFb, boolean targetLi) {
+    private void startPipeline(String topic, String tone, String language, boolean targetFb, boolean targetThreads, boolean targetLi) {
         goToStep(2);
-        binding.tvLiveStreamOutput.setText("Bắt đầu khởi tạo AI Multi-Agent Pipeline...\n");
+        binding.tvLiveStreamOutput.setText("Bắt đầu khởi tạo AI Multi-Agent Pipeline...\nNgôn ngữ: " + language + "\n");
 
-        orchestrator.generatePost(topic, tone, targetFb, targetLi, new AIAgentOrchestrator.AgentCallback() {
+        orchestrator.generatePost(topic, tone, language, targetFb, targetThreads, targetLi, new AIAgentOrchestrator.AgentCallback() {
             @Override
             public void onStepChanged(int stepIndex, String stepTitle, String agentName) {
                 if (binding == null) return;
@@ -140,6 +176,13 @@ public class CreatePostFragment extends Fragment {
             public void onStreamFacebookChunk(String fullCurrentText) {
                 if (binding == null) return;
                 binding.tvLiveStreamOutput.setText("[Facebook Agent Output]:\n\n" + fullCurrentText);
+                binding.scrollStream.fullScroll(View.FOCUS_DOWN);
+            }
+
+            @Override
+            public void onStreamThreadsChunk(String fullCurrentText) {
+                if (binding == null) return;
+                binding.tvLiveStreamOutput.setText("[Threads Agent Output]:\n\n" + fullCurrentText);
                 binding.scrollStream.fullScroll(View.FOCUS_DOWN);
             }
 
@@ -172,7 +215,8 @@ public class CreatePostFragment extends Fragment {
         binding.tabPlatformReview.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                isViewingFacebookTab = (tab.getPosition() == 0);
+                currentReviewPlatform = tab.getPosition();
+                isViewingFacebookTab = (currentReviewPlatform == 0);
                 updateReviewTabContent();
             }
 
@@ -190,9 +234,23 @@ public class CreatePostFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 int length = s != null ? s.length() : 0;
-                int limit = isViewingFacebookTab ? FB_CHAR_LIMIT : LI_CHAR_LIMIT;
-                String channel = isViewingFacebookTab ? "Facebook" : "LinkedIn";
+                int limit = FB_CHAR_LIMIT;
+                String channel = "Facebook";
+                if (currentReviewPlatform == 1) {
+                    limit = THREADS_CHAR_LIMIT;
+                    channel = "Threads";
+                } else if (currentReviewPlatform == 2) {
+                    limit = LI_CHAR_LIMIT;
+                    channel = "LinkedIn";
+                }
                 binding.tvCharCounter.setText(length + " / " + limit + " ký tự (" + channel + ")");
+
+                // Alert when exceeding limit (especially Threads 500 chars limit)
+                if (length > limit) {
+                    binding.tvCharCounter.setTextColor(Color.parseColor("#EF4444"));
+                } else {
+                    binding.tvCharCounter.setTextColor(Color.parseColor("#64748B"));
+                }
 
                 // Check Content Safety Warning
                 AIAgentOrchestrator.SafetyCheckResult safety = orchestrator.checkContentSafety(s.toString());
@@ -205,8 +263,10 @@ public class CreatePostFragment extends Fragment {
 
                 // Keep edited text in currentPost
                 if (currentPost != null) {
-                    if (isViewingFacebookTab) {
+                    if (currentReviewPlatform == 0) {
                         currentPost.setContentFacebook(s.toString());
+                    } else if (currentReviewPlatform == 1) {
+                        currentPost.setContentThreads(s.toString());
                     } else {
                         currentPost.setContentLinkedIn(s.toString());
                     }
@@ -273,7 +333,7 @@ public class CreatePostFragment extends Fragment {
             if (currentPost == null) return;
             Toast.makeText(getContext(), "Đang yêu cầu AI viết lại bản mới...", Toast.LENGTH_SHORT).show();
             goToStep(2);
-            orchestrator.retryChannel(currentPost, isViewingFacebookTab, new AIAgentOrchestrator.AgentCallback() {
+            orchestrator.retryChannel(currentPost, currentReviewPlatform, new AIAgentOrchestrator.AgentCallback() {
                 @Override
                 public void onStepChanged(int stepIndex, String stepTitle, String agentName) {
                     if (binding == null) return;
@@ -285,6 +345,12 @@ public class CreatePostFragment extends Fragment {
                 public void onStreamFacebookChunk(String fullCurrentText) {
                     if (binding == null) return;
                     binding.tvLiveStreamOutput.setText("[Facebook Retry Output]:\n\n" + fullCurrentText);
+                }
+
+                @Override
+                public void onStreamThreadsChunk(String fullCurrentText) {
+                    if (binding == null) return;
+                    binding.tvLiveStreamOutput.setText("[Threads Retry Output]:\n\n" + fullCurrentText);
                 }
 
                 @Override
@@ -427,9 +493,17 @@ public class CreatePostFragment extends Fragment {
         if (post == null || binding == null) return;
         binding.tvImagePromptPreview.setText(post.getImagePrompt() != null ? post.getImagePrompt() : "Tech 3D vector illustration");
 
-        isViewingFacebookTab = post.isTargetFacebook() || !post.isTargetLinkedIn();
-        if (binding.tabPlatformReview.getTabAt(isViewingFacebookTab ? 0 : 1) != null) {
-            binding.tabPlatformReview.getTabAt(isViewingFacebookTab ? 0 : 1).select();
+        if (post.isTargetFacebook()) {
+            currentReviewPlatform = 0;
+        } else if (post.isTargetThreads()) {
+            currentReviewPlatform = 1;
+        } else {
+            currentReviewPlatform = 2;
+        }
+        isViewingFacebookTab = (currentReviewPlatform == 0);
+
+        if (binding.tabPlatformReview.getTabAt(currentReviewPlatform) != null) {
+            binding.tabPlatformReview.getTabAt(currentReviewPlatform).select();
         }
         updateReviewTabContent();
     }
@@ -437,11 +511,16 @@ public class CreatePostFragment extends Fragment {
     private void updateReviewTabContent() {
         if (currentPost == null || binding == null) return;
 
-        if (isViewingFacebookTab) {
+        if (currentReviewPlatform == 0) {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_facebook);
-            binding.tvReviewAuthorName.setText("AI Tech Vietnam (Page)");
+            binding.tvReviewAuthorName.setText("AI Tech Vietnam (Facebook Page)");
             binding.tvReviewSubInfo.setText("Vừa xong • 🌐 Công khai");
             binding.etReviewContent.setText(currentPost.getContentFacebook());
+        } else if (currentReviewPlatform == 1) {
+            binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_threads);
+            binding.tvReviewAuthorName.setText("@aitech_vietnam (Threads)");
+            binding.tvReviewSubInfo.setText("Vừa xong • 🧵 Cuộc trò chuyện mở");
+            binding.etReviewContent.setText(currentPost.getContentThreads());
         } else {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_linkedin);
             binding.tvReviewAuthorName.setText("Nguyen Van A (Tech Lead)");
