@@ -64,7 +64,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Tài Khoản Mạng Xã Hội Đã Kết Nối"
+                        android:text="Quản Lý Tài Khoản Mạng Xã Hội"
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"
                         android:textStyle="bold" />

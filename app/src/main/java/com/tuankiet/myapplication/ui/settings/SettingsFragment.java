@@ -43,6 +43,9 @@ public class SettingsFragment extends Fragment {
 
         loadSettings();
         setupListeners();
+        // Tam khoa ket noi OAuth khi chua cau hinh
+        binding.switchFbConnection.setEnabled(false);
+        binding.switchLiConnection.setEnabled(false);
     }
 
     private void loadSettings() {
@@ -225,9 +228,11 @@ public class SettingsFragment extends Fragment {
                 if (acc.getPlatform() == SocialPlatform.FACEBOOK) {
                     binding.tvSettingsFbDesc.setText(description);
                     binding.switchFbConnection.setChecked(displayedConnected);
+                    binding.switchFbConnection.setEnabled(false);
                 } else if (acc.getPlatform() == SocialPlatform.LINKEDIN) {
                     binding.tvSettingsLiDesc.setText(description);
                     binding.switchLiConnection.setChecked(displayedConnected);
+                    binding.switchLiConnection.setEnabled(false);
                 }
             }
         } finally {
