@@ -61,8 +61,12 @@ public class SettingsFragment extends Fragment {
         String threadsToken = prefManager.getThreadsToken();
         if (threadsToken != null && !threadsToken.isEmpty()) {
             binding.etSettingsThreadsToken.setText(threadsToken);
-            binding.tvSettingsThreadsDesc.setText("Đã lưu Token • Sẵn sàng đăng tự động");
-            binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.status_green));
+            binding.tvSettingsThreadsDesc.setText(
+                    "Đã lưu Token • Chưa xác minh kết nối"
+            );
+            binding.tvSettingsThreadsDesc.setTextColor(
+                    getResources().getColor(R.color.text_secondary)
+            );
         } else {
             binding.tvSettingsThreadsDesc.setText("Chưa cấu hình Token");
             binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.text_secondary));
@@ -123,8 +127,12 @@ public class SettingsFragment extends Fragment {
                 return;
             }
             prefManager.saveThreadsToken(token);
-            binding.tvSettingsThreadsDesc.setText("Đã lưu Token • Sẵn sàng đăng tự động");
-            binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.status_green));
+            binding.tvSettingsThreadsDesc.setText(
+                    "Đã lưu Token • Chưa xác minh kết nối"
+            );
+            binding.tvSettingsThreadsDesc.setTextColor(
+                    getResources().getColor(R.color.text_secondary)
+            );
             Toast.makeText(getContext(), "🎉 Đã lưu Threads Token thành công!", Toast.LENGTH_SHORT).show();
         });
 
