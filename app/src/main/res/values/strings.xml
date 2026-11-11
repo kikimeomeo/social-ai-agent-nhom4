@@ -33,7 +33,12 @@
     <string name="tone_friendly">Thân thiện</string>
     <string name="target_channels">Kênh phát hành:</string>
     <string name="channel_facebook">Facebook Page</string>
+    <string name="channel_threads">Meta Threads</string>
+    <string name="channel_threads_desc">Meta Threads (Bài viết ngắn ≤ 500 ký tự &amp; Hội thoại)</string>
     <string name="channel_linkedin">LinkedIn</string>
+    <string name="language_selection">Ngôn ngữ bài viết (Language):</string>
+    <string name="lang_vi">🇻🇳 Tiếng Việt</string>
+    <string name="lang_en">🇬🇧 English</string>
     <string name="btn_start_ai">Bắt đầu sinh bài viết</string>
     <string name="btn_cancel">Hủy bỏ</string>
     <string name="btn_publish">Đăng ngay lên các kênh</string>

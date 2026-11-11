@@ -11,10 +11,13 @@ public class Post implements Serializable {
     private long id;
     private String topic;
     private String tone;
+    private String language = "Tiếng Việt";
     private String contentFacebook;
+    private String contentThreads;
     private String contentLinkedIn;
     private String status;
     private boolean targetFacebook;
+    private boolean targetThreads;
     private boolean targetLinkedIn;
     private long createdAt;
     private String imageUrl;
@@ -24,6 +27,7 @@ public class Post implements Serializable {
     private int commentCount;
     private int shareCount;
     private boolean isPublishedFacebook;
+    private boolean isPublishedThreads;
     private boolean isPublishedLinkedIn;
 
     public Post() {
@@ -76,12 +80,28 @@ public class Post implements Serializable {
         this.tone = tone;
     }
 
+    public String getLanguage() {
+        return language != null ? language : "Tiếng Việt";
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
+    }
+
     public String getContentFacebook() {
         return contentFacebook != null ? contentFacebook : "";
     }
 
     public void setContentFacebook(String contentFacebook) {
         this.contentFacebook = contentFacebook;
+    }
+
+    public String getContentThreads() {
+        return contentThreads != null ? contentThreads : "";
+    }
+
+    public void setContentThreads(String contentThreads) {
+        this.contentThreads = contentThreads;
     }
 
     public String getContentLinkedIn() {
@@ -106,6 +126,14 @@ public class Post implements Serializable {
 
     public void setTargetFacebook(boolean targetFacebook) {
         this.targetFacebook = targetFacebook;
+    }
+
+    public boolean isTargetThreads() {
+        return targetThreads;
+    }
+
+    public void setTargetThreads(boolean targetThreads) {
+        this.targetThreads = targetThreads;
     }
 
     public boolean isTargetLinkedIn() {
@@ -178,6 +206,14 @@ public class Post implements Serializable {
 
     public void setPublishedFacebook(boolean publishedFacebook) {
         isPublishedFacebook = publishedFacebook;
+    }
+
+    public boolean isPublishedThreads() {
+        return isPublishedThreads;
+    }
+
+    public void setPublishedThreads(boolean publishedThreads) {
+        isPublishedThreads = publishedThreads;
     }
 
     public boolean isPublishedLinkedIn() {
