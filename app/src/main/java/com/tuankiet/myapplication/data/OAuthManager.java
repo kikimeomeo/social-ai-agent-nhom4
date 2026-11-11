@@ -91,16 +91,28 @@ public class OAuthManager {
         return true;
     }
 
-    public void checkAndRefreshTokenIfNeeded(SocialPlatform platform, OAuthCallback callback) {
-        SecurePreferenceManager prefs = SecurePreferenceManager.getInstance(context);
-        if (prefs.isTokenExpired(platform)) {
-            // Simulate refresh token exchange
-            String newAccessToken = "refreshed_access_token_" + System.currentTimeMillis();
-            String refreshToken = prefs.getOAuthRefreshToken(platform);
-            prefs.saveOAuthToken(platform, newAccessToken, refreshToken, 5184000L);
-            if (callback != null) {
-                callback.onSuccess(platform, "Đã tự động làm mới token (Refresh Token) cho " + platform.getShortName());
-            }
+    public void checkAndRefreshTokenIfNeeded(
+            SocialPlatform platform,
+            OAuthCallback callback
+    ) {
+        SecurePreferenceManager prefs =
+                SecurePreferenceManager.getInstance(context);
+
+        if (!prefs.isTokenExpired(platform)) {
+            // Token chưa hết hạn theo dữ liệu cục bộ.
+            // Không có nghĩa là OAuth đã được xác minh.
+            return;
+        }
+
+        // OAuth thật chưa hỗ trợ refresh token.
+        // Xóa token không còn hợp lệ, không tạo token giả.
+        prefs.clearOAuthToken(platform);
+
+        if (callback != null) {
+            callback.onError(
+                    "Chưa có token hợp lệ hoặc token đã hết hạn. " +
+                            "Chức năng làm mới OAuth chưa được triển khai."
+            );
         }
     }
 

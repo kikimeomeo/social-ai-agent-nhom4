@@ -97,23 +97,47 @@ public class SecurePreferenceManager {
     }
 
     public String getOAuthToken(SocialPlatform platform) {
-        return platform == SocialPlatform.FACEBOOK ?
-                prefs.getString(KEY_FB_TOKEN, "EAAG_mock_fb_access_token_socialai") :
-                prefs.getString(KEY_LI_TOKEN, "AQV_mock_li_access_token_socialai");
+        if (platform == SocialPlatform.FACEBOOK) {
+            return prefs.getString(KEY_FB_TOKEN, "");
+        }
+
+        if (platform == SocialPlatform.LINKEDIN) {
+            return prefs.getString(KEY_LI_TOKEN, "");
+        }
+
+        return "";
     }
 
     public String getOAuthRefreshToken(SocialPlatform platform) {
-        return platform == SocialPlatform.FACEBOOK ?
-                prefs.getString(KEY_FB_REFRESH, "fb_mock_refresh_token_12345") :
-                prefs.getString(KEY_LI_REFRESH, "li_mock_refresh_token_67890");
+        if (platform == SocialPlatform.FACEBOOK) {
+            return prefs.getString(KEY_FB_REFRESH, "");
+        }
+
+        if (platform == SocialPlatform.LINKEDIN) {
+            return prefs.getString(KEY_LI_REFRESH, "");
+        }
+
+        return "";
     }
 
     public boolean isTokenExpired(SocialPlatform platform) {
-        long expiry = platform == SocialPlatform.FACEBOOK ?
-                prefs.getLong(KEY_FB_EXPIRY, 0L) :
-                prefs.getLong(KEY_LI_EXPIRY, 0L);
-        // If 0, assume valid mock session
-        return expiry > 0 && System.currentTimeMillis() > expiry;
+        String token = getOAuthToken(platform);
+
+        if (token == null || token.trim().isEmpty()) {
+            return true;
+        }
+
+        long expiry;
+
+        if (platform == SocialPlatform.FACEBOOK) {
+            expiry = prefs.getLong(KEY_FB_EXPIRY, 0L);
+        } else if (platform == SocialPlatform.LINKEDIN) {
+            expiry = prefs.getLong(KEY_LI_EXPIRY, 0L);
+        } else {
+            return true;
+        }
+
+        return expiry <= 0L || System.currentTimeMillis() >= expiry;
     }
 
     public void clearOAuthToken(SocialPlatform platform) {
