@@ -283,10 +283,24 @@ public class RealSocialPublisher {
                     String json = response.body().string();
                     try {
                         JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-                        String publishedId = obj.has("id") ? obj.get("id").getAsString() : creationId;
+                        if (!obj.has("id")
+                                || obj.get("id").isJsonNull()
+                                || obj.get("id").getAsString().trim().isEmpty()) {
+
+                            mainHandler.post(() ->
+                                    callback.onError(
+                                            "Threads Publish API không trả về ID bài đăng hợp lệ."
+                                    )
+                            );
+                            return;
+                        }
+
+                        String publishedId = obj.get("id").getAsString();
+
                         botPublishedReplyIds.add(publishedId);
-                        String liveUrl = "https://www.threads.net/post/" + publishedId;
-                        mainHandler.post(() -> callback.onSuccess(liveUrl, publishedId));
+
+                        // Lấy permalink thật từ Threads API
+                        fetchThreadsPermalink(publishedId, accessToken, callback);
                     } catch (Exception e) {
                         mainHandler.post(() -> callback.onError("Lỗi giải mã ID bài đăng Threads: " + e.getMessage()));
                     }
@@ -294,6 +308,66 @@ public class RealSocialPublisher {
                     String err = response.body() != null ? response.body().string() : "Mã lỗi " + response.code();
                     mainHandler.post(() -> callback.onError("Threads Publish API từ chối: " + err));
                 }
+            }
+        });
+    }
+
+    private static void fetchThreadsPermalink(
+            String publishedId,
+            String accessToken,
+            ApiPublishCallback callback
+    ) {
+        String url = "https://graph.threads.net/v1.0/"
+                + Uri.encode(publishedId)
+                + "?fields=id,permalink";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer " + accessToken.trim())
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // Bài đã được xuất bản, nhưng chưa lấy được link.
+                mainHandler.post(() ->
+                        callback.onSuccess("", publishedId)
+                );
+            }
+
+            @Override
+            public void onResponse(
+                    Call call,
+                    Response response
+            ) throws IOException {
+
+                String permalink = "";
+
+                try (Response ignored = response) {
+                    if (response.isSuccessful()
+                            && response.body() != null) {
+
+                        String json = response.body().string();
+                        JsonObject obj =
+                                JsonParser.parseString(json).getAsJsonObject();
+
+                        if (obj.has("permalink")
+                                && !obj.get("permalink").isJsonNull()) {
+
+                            permalink = obj.get("permalink").getAsString();
+                        }
+                    }
+                } catch (Exception e) {
+                    // Không coi lỗi lấy link là lỗi xuất bản.
+                }
+
+                final String finalPermalink = permalink;
+
+                mainHandler.post(() ->
+                        callback.onSuccess(finalPermalink, publishedId)
+                );
             }
         });
     }
