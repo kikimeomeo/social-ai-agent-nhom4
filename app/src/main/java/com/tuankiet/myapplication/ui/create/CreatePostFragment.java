@@ -475,19 +475,95 @@ public class CreatePostFragment extends Fragment {
             com.tuankiet.myapplication.data.SecurePreferenceManager.getInstance(requireContext()).saveThreadsToken(token);
 
             Toast.makeText(getContext(), "Đang gửi bài viết lên Official Threads API...", Toast.LENGTH_SHORT).show();
+            final android.content.Context appContext =
+                    requireContext().getApplicationContext();
             com.tuankiet.myapplication.util.RealSocialPublisher.postToThreadsViaApi(userId, token, content, new com.tuankiet.myapplication.util.RealSocialPublisher.ApiPublishCallback() {
                 @Override
                 public void onSuccess(String realPostUrl, String postId) {
-                    threadsDialog.dismiss();
-                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("🎉 ĐĂNG THREADS THÀNH CÔNG!")
-                            .setMessage("Bài viết đã xuất hiện trên trang Threads thật của bạn qua API!\n\nLink bài viết: " + realPostUrl)
-                            .setPositiveButton("Mở Threads xem bài ngay", (di, w) -> {
-                                Intent openBrowser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(realPostUrl));
-                                startActivity(openBrowser);
-                            })
-                            .setNegativeButton("Đóng", null)
-                            .show();
+
+                    // Lưu kết quả vào SQLite trên luồng nền để không làm đơ giao diện
+                    new Thread(() -> {
+
+                        boolean savedSuccessfully = false;
+
+                        try {
+                            long rowId = com.tuankiet.myapplication.data.DatabaseHelper
+                                    .getInstance(appContext)
+                                    .saveThreadsPublication(
+                                            postId,
+                                            realPostUrl,
+                                            content
+                                    );
+
+                            savedSuccessfully = rowId != -1L;
+
+                        } catch (Exception e) {
+                            android.util.Log.e(
+                                    "ThreadsPublishing",
+                                    "Không thể lưu bài đăng Threads vào SQLite",
+                                    e
+                            );
+                        }
+
+                        final boolean finalSaved = savedSuccessfully;
+
+                        // Quay về luồng chính để cập nhật giao diện Android
+                        new android.os.Handler(
+                                android.os.Looper.getMainLooper()
+                        ).post(() -> {
+
+                            if (!isAdded()) return;
+
+                            threadsDialog.dismiss();
+
+                            boolean hasLink = realPostUrl != null
+                                    && !realPostUrl.trim().isEmpty();
+
+                            String message = "Meta đã xác nhận xuất bản bài viết.\n\n"
+                                    + "ID bài đăng Threads: " + postId;
+
+                            if (hasLink) {
+                                message += "\n\nĐường dẫn bài viết: " + realPostUrl;
+                            } else {
+                                message += "\n\nChưa lấy được đường dẫn bài viết từ Threads API.";
+                            }
+
+                            if (finalSaved) {
+                                message += "\n\nĐã lưu kết quả xuất bản vào cơ sở dữ liệu SQLite.";
+                            } else {
+                                message += "\n\nKhông thể lưu kết quả vào cơ sở dữ liệu SQLite."
+                                        + "\nBài viết vẫn đã được Meta xác nhận xuất bản."
+                                        + "\nVui lòng không đăng lại ngay để tránh trùng bài.";
+                            }
+
+                            androidx.appcompat.app.AlertDialog.Builder builder =
+                                    new androidx.appcompat.app.AlertDialog.Builder(
+                                            requireContext()
+                                    )
+                                            .setTitle("KẾT QUẢ XUẤT BẢN THREADS")
+                                            .setMessage(message);
+
+                            if (hasLink) {
+                                builder.setPositiveButton(
+                                        "Mở bài viết",
+                                        (dialog, which) -> {
+                                            Intent intent = new Intent(
+                                                    Intent.ACTION_VIEW,
+                                                    android.net.Uri.parse(realPostUrl)
+                                            );
+                                            startActivity(intent);
+                                        }
+                                );
+
+                                builder.setNegativeButton("Đóng", null);
+                            } else {
+                                builder.setPositiveButton("Đóng", null);
+                            }
+
+                            builder.show();
+                        });
+
+                    }).start();
                 }
 
                 @Override

@@ -17,9 +17,21 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "social_ai.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     private static DatabaseHelper instance;
+
+    private static void createThreadsPublicationsTable(SQLiteDatabase db) {
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS threads_publications (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "threads_post_id TEXT NOT NULL UNIQUE, " +
+                        "permalink TEXT, " +
+                        "content TEXT NOT NULL, " +
+                        "published_at INTEGER NOT NULL" +
+                        ")"
+        );
+    }
 
     public static synchronized DatabaseHelper getInstance(Context context) {
         if (instance == null) {
@@ -90,15 +102,47 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "tokens_used INTEGER, " +
                 "cost_estimate REAL, " +
                 "duration_ms INTEGER)");
+
+        createThreadsPublicationsTable(db);
     }
 
     @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS posts");
-        db.execSQL("DROP TABLE IF EXISTS comments");
-        db.execSQL("DROP TABLE IF EXISTS accounts");
-        db.execSQL("DROP TABLE IF EXISTS agent_logs");
-        onCreate(db);
+    public void onUpgrade(
+            SQLiteDatabase db,
+            int oldVersion,
+            int newVersion
+    ) {
+        if (oldVersion < 2) {
+            createThreadsPublicationsTable(db);
+        }
+    }
+
+    public long saveThreadsPublication(
+            String threadsPostId,
+            String permalink,
+            String content
+    ) {
+        if (threadsPostId == null || threadsPostId.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Threads Post ID không được để trống"
+            );
+        }
+
+        ContentValues cv = new ContentValues();
+
+        cv.put("threads_post_id", threadsPostId.trim());
+        cv.put("permalink", permalink != null ? permalink.trim() : "");
+        cv.put("content", content != null ? content : "");
+        cv.put("published_at", System.currentTimeMillis());
+
+        SQLiteDatabase db = getWritableDatabase();
+
+        return db.insertWithOnConflict(
+                "threads_publications",
+                null,
+                cv,
+                SQLiteDatabase.CONFLICT_REPLACE
+        );
     }
 
     // --- Posts Operations ---
