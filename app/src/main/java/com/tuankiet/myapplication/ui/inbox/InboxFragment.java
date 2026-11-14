@@ -166,6 +166,8 @@ public class InboxFragment extends Fragment {
                 adapter.applyFilter("FACEBOOK");
             } else if (checkedIds.contains(R.id.chipFilterLinkedIn)) {
                 adapter.applyFilter("LINKEDIN");
+            } else if (checkedIds.contains(R.id.chipFilterThreads)) { // Bổ sung xử lý lọc Threads
+                adapter.applyFilter("THREADS");
             } else {
                 adapter.applyFilter("ALL");
             }
@@ -198,7 +200,7 @@ public class InboxFragment extends Fragment {
             dialogBinding.tvSafetyAlertDetail.setText(
                     item.getRiskWarning() != null ? item.getRiskWarning() :
                             "CẢNH BÁO AN TOÀN AI: Bình luận này có dấu hiệu tiêu cực hoặc rủi ro uy tín thương hiệu. " +
-                                    "Tính năng tự động điền gợi ý đã bị khóa. Vui lòng tự soạn phản hồi cẩn trọng.");
+                            "Tính năng tự động điền gợi ý đã bị khóa. Vui lòng tự soạn phản hồi cẩn trọng.");
             dialogBinding.cardAiSuggestedReply.setVisibility(View.GONE);
             dialogBinding.etReplyInput.setHint("Nhập câu trả lời thủ công của bạn sau khi cân nhắc...");
         } else {

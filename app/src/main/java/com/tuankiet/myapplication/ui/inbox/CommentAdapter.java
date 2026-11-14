@@ -42,12 +42,15 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
     public void applyFilter(String filter) {
         currentFilter = filter;
         displayedComments.clear();
+
         for (CommentItem item : allComments) {
             if ("ALL".equalsIgnoreCase(filter)) {
                 displayedComments.add(item);
             } else if ("FACEBOOK".equalsIgnoreCase(filter) && item.getPlatform() == SocialPlatform.FACEBOOK) {
                 displayedComments.add(item);
             } else if ("LINKEDIN".equalsIgnoreCase(filter) && item.getPlatform() == SocialPlatform.LINKEDIN) {
+                displayedComments.add(item);
+            } else if ("THREADS".equalsIgnoreCase(filter) && item.getPlatform() == SocialPlatform.THREADS) { // Bổ sung Threads
                 displayedComments.add(item);
             }
         }
@@ -81,8 +84,13 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
         }
 
         void bind(CommentItem item) {
-            binding.ivCommentPlatform.setImageResource(
-                    item.getPlatform() == SocialPlatform.FACEBOOK ? R.drawable.ic_facebook : R.drawable.ic_linkedin);
+            if (item.getPlatform() == SocialPlatform.FACEBOOK) {
+                binding.ivCommentPlatform.setImageResource(R.drawable.ic_facebook);
+            } else if (item.getPlatform() == SocialPlatform.LINKEDIN) {
+                binding.ivCommentPlatform.setImageResource(R.drawable.ic_linkedin);
+            } else if (item.getPlatform() == SocialPlatform.THREADS) {
+                binding.ivCommentPlatform.setImageResource(R.drawable.ic_threads);
+            }
 
             binding.tvPostContextTitle.setText("Bài: " + item.getPostTitle());
             binding.tvAuthorName.setText(item.getAuthorName());
@@ -137,4 +145,3 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
         }
     }
 }
-
