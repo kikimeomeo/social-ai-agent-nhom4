@@ -31,6 +31,7 @@ public class AIAgentOrchestrator {
         void onStepChanged(int stepIndex, String stepTitle, String agentName);
         void onStreamFacebookChunk(String fullCurrentText);
         void onStreamLinkedInChunk(String fullCurrentText);
+        default void onStreamThreadsChunk(String fullCurrentText) {}
         void onCompleted(Post post);
         void onError(String message);
     }
@@ -115,14 +116,24 @@ public class AIAgentOrchestrator {
     }
 
     public String buildFacebookUserPrompt(String topic, String tone) {
-        return "Hãy viết một bài đăng Facebook Page hoàn chỉnh bằng tiếng Việt.\n" +
+        return buildFacebookUserPrompt(topic, tone, "Tiếng Việt");
+    }
+
+    public String buildFacebookUserPrompt(String topic, String tone, String language) {
+        String langLabel = (language != null && !language.trim().isEmpty()) ? language : "Tiếng Việt";
+        return "Hãy viết một bài đăng Facebook Page hoàn chỉnh bằng ngôn ngữ: " + langLabel + ".\n" +
                 "- Chủ đề trọng tâm: " + topic + "\n" +
                 "- Giọng văn (Tone of voice): " + tone + "\n" +
                 "- Yêu cầu: Có hook mở đầu bắt mắt, emoji sinh động, danh sách luận điểm ngắn gọn, câu hỏi thảo luận kêu gọi tương tác và hashtags phù hợp. Không dùng markdown phức tạp.";
     }
 
     public String buildThreadsUserPrompt(String topic, String tone) {
-        return "Hãy viết một bài đăng Threads (Meta) ngắn gọn, sắc bén bằng tiếng Việt.\n" +
+        return buildThreadsUserPrompt(topic, tone, "Tiếng Việt");
+    }
+
+    public String buildThreadsUserPrompt(String topic, String tone, String language) {
+        String langLabel = (language != null && !language.trim().isEmpty()) ? language : "Tiếng Việt";
+        return "Hãy viết một bài đăng Threads (Meta) ngắn gọn, sắc bén bằng ngôn ngữ: " + langLabel + ".\n" +
                 "- Chủ đề trọng tâm: " + topic + "\n" +
                 "- Giọng văn: " + tone + "\n" +
                 "- Yêu cầu: Dưới 500 ký tự, đi thẳng vào góc nhìn thực tế, chân thật, tự nhiên như chia sẻ cá nhân, đặt câu hỏi thảo luận tự nhiên ở cuối bài. Không dùng bullet points cứng nhắc.";
@@ -133,6 +144,10 @@ public class AIAgentOrchestrator {
     }
 
     public void generatePost(String topic, String tone, boolean targetFb, boolean targetLi, AgentCallback callback) {
+        generatePost(topic, tone, "Tiếng Việt", targetFb, false, targetLi, callback);
+    }
+
+    public void generatePost(String topic, String tone, String language, boolean targetFb, boolean targetThreads, boolean targetLi, AgentCallback callback) {
         isCancelled = false;
         executorService.execute(() -> {
             try {
@@ -145,29 +160,32 @@ public class AIAgentOrchestrator {
                 Thread.sleep(600);
                 if (isCancelled) return;
 
-                String brief = "Brief: Topic '" + topic + "' phong cách '" + tone + "'. Kênh: " + (targetFb ? "Facebook " : "") + (targetLi ? "Threads" : "");
-                logStep("Orchestrator Synthesis", "Master Orchestrator", "Topic: " + topic + ", Tone: " + tone, brief, 350, 0.0014);
+                String brief = "Brief: Topic '" + topic + "', Phong cách: '" + tone + "', Ngôn ngữ: '" + language + "'. Kênh: " +
+                        (targetFb ? "Facebook " : "") + (targetThreads ? "Threads " : "") + (targetLi ? "LinkedIn" : "");
+                logStep("Orchestrator Synthesis", "Master Orchestrator", "Topic: " + topic + ", Tone: " + tone + ", Lang: " + language, brief, 350, 0.0014);
 
                 String fbFull = "";
                 String threadsFull = "";
+                String liFull = "";
                 int fbTokens = 0;
                 int threadsTokens = 0;
+                int liTokens = 0;
 
                 // Step 2: Facebook Sub-agent Stream
                 if (targetFb) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết bài & tạo hook...", "Facebook Agent");
-                    String fbPrompt = buildFacebookUserPrompt(topic, tone);
+                    String fbPrompt = buildFacebookUserPrompt(topic, tone, language);
                     if (useRealApi) {
                         try {
                             fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT);
                             fbTokens = lastCallTokens > 0 ? lastCallTokens : 580;
                         } catch (Exception ex) {
                             // Fallback to local draft
-                            fbFull = generateFacebookDraft(topic, tone);
+                            fbFull = generateFacebookDraft(topic, tone, language);
                             fbTokens = 580;
                         }
                     } else {
-                        fbFull = generateFacebookDraft(topic, tone);
+                        fbFull = generateFacebookDraft(topic, tone, language);
                         fbTokens = 580;
                     }
 
@@ -177,29 +195,51 @@ public class AIAgentOrchestrator {
                 }
 
                 // Step 3: Threads Sub-agent Stream
-                if (targetLi) {
-                    notifyStep(callback, 3, "Threads Sub-agent đang tối ưu hóa nội dung tương tác...", "Threads Agent");
-                    String threadsPrompt = buildThreadsUserPrompt(topic, tone);
+                if (targetThreads) {
+                    notifyStep(callback, 3, "Threads Sub-agent đang tối ưu bài ngắn (≤ 500 ký tự)...", "Threads Agent");
+                    String threadsPrompt = buildThreadsUserPrompt(topic, tone, language);
                     if (useRealApi) {
                         try {
                             threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT);
-                            threadsTokens = lastCallTokens > 0 ? lastCallTokens : 450;
+                            threadsTokens = lastCallTokens > 0 ? lastCallTokens : 420;
                         } catch (Exception ex) {
-                            threadsFull = generateThreadsDraft(topic, tone);
-                            threadsTokens = 450;
+                            threadsFull = generateThreadsDraft(topic, tone, language);
+                            threadsTokens = 420;
                         }
                     } else {
-                        threadsFull = generateThreadsDraft(topic, tone);
-                        threadsTokens = 450;
+                        threadsFull = generateThreadsDraft(topic, tone, language);
+                        threadsTokens = 420;
                     }
 
-                    streamText(threadsFull, callback, false);
+                    streamThreadsChunk(threadsFull, callback);
                     if (isCancelled) return;
                     logStep("Threads Sub-agent", "Threads Specialist", threadsPrompt, threadsFull.substring(0, Math.min(80, threadsFull.length())) + "...", threadsTokens, threadsTokens * 0.000004);
                 }
 
-                // Step 4: Visual Agent & Packaging
-                notifyStep(callback, 4, "Visual Agent đang tạo prompt & dựng ảnh minh họa...", "Visual Agent");
+                // Step 4: LinkedIn Sub-agent Stream (compat)
+                if (targetLi) {
+                    notifyStep(callback, 4, "LinkedIn Sub-agent đang tối ưu hóa B2B insights...", "LinkedIn Agent");
+                    String liPrompt = buildLinkedInUserPrompt(topic, tone);
+                    if (useRealApi) {
+                        try {
+                            liFull = callLlmApi(config, liPrompt, SYSTEM_PROMPT_LINKEDIN_AGENT);
+                            liTokens = lastCallTokens > 0 ? lastCallTokens : 720;
+                        } catch (Exception ex) {
+                            liFull = generateLinkedInDraft(topic, tone, language);
+                            liTokens = 720;
+                        }
+                    } else {
+                        liFull = generateLinkedInDraft(topic, tone, language);
+                        liTokens = 720;
+                    }
+
+                    streamText(liFull, callback, false);
+                    if (isCancelled) return;
+                    logStep("LinkedIn Sub-agent", "LinkedIn Strategist", liPrompt, liFull.substring(0, Math.min(80, liFull.length())) + "...", liTokens, liTokens * 0.000004);
+                }
+
+                // Step 5: Visual Agent & Packaging
+                notifyStep(callback, 5, "Visual Agent đang tạo prompt & dựng ảnh minh họa...", "Visual Agent");
                 Thread.sleep(500);
                 if (isCancelled) return;
 
@@ -207,7 +247,7 @@ public class AIAgentOrchestrator {
                 logStep("Visual Agent", "Visual Designer", imagePrompt, "Generated vector placeholder graphic asset.", 240, 0.001);
 
                 // Record token metrics in SecurePreferenceManager
-                int totalNewTokens = fbTokens + threadsTokens + 350 + 240;
+                int totalNewTokens = fbTokens + threadsTokens + liTokens + 350 + 240;
                 double totalNewCost = totalNewTokens * 0.000004; // ~$0.004 per 1k tokens
                 prefManager.addTokens(totalNewTokens, totalNewCost);
 
@@ -215,9 +255,12 @@ public class AIAgentOrchestrator {
                 Post post = new Post();
                 post.setTopic(topic);
                 post.setTone(tone);
+                post.setLanguage(language);
                 post.setContentFacebook(targetFb ? fbFull : "");
-                post.setContentLinkedIn(targetLi ? threadsFull : ""); // Post model lưu content kênh 2
+                post.setContentThreads(targetThreads ? threadsFull : "");
+                post.setContentLinkedIn(targetLi ? liFull : "");
                 post.setTargetFacebook(targetFb);
+                post.setTargetThreads(targetThreads);
                 post.setTargetLinkedIn(targetLi);
                 post.setStatus(Post.STATUS_DRAFT);
                 post.setImageUrl("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe");
@@ -235,6 +278,10 @@ public class AIAgentOrchestrator {
     }
 
     public void retryChannel(Post currentPost, boolean isFacebook, AgentCallback callback) {
+        retryChannel(currentPost, isFacebook ? 0 : 2, callback);
+    }
+
+    public void retryChannel(Post currentPost, int platformIndex, AgentCallback callback) {
         isCancelled = false;
         executorService.execute(() -> {
             try {
@@ -242,34 +289,48 @@ public class AIAgentOrchestrator {
                 LLMConfig config = prefManager.getConfig();
                 boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
 
-                if (isFacebook) {
+                if (platformIndex == 0) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết lại bản mới...", "Facebook Agent");
                     String newFb;
                     if (useRealApi) {
                         try {
-                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_FACEBOOK_AGENT);
+                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_FACEBOOK_AGENT);
                         } catch (Exception ex) {
-                            newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone());
+                            newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
                     } else {
-                        newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone());
+                        newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                     }
                     streamText(newFb, callback, true);
                     currentPost.setContentFacebook(newFb);
-                } else {
-                    notifyStep(callback, 3, "Threads Sub-agent đang tái cấu trúc bài viết...", "Threads Agent");
+                } else if (platformIndex == 1) {
+                    notifyStep(callback, 3, "Threads Sub-agent đang viết lại bản ngắn mới...", "Threads Agent");
                     String newThreads;
                     if (useRealApi) {
                         try {
-                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_THREADS_AGENT);
+                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_THREADS_AGENT);
                         } catch (Exception ex) {
-                            newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone());
+                            newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
                     } else {
-                        newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone());
+                        newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                     }
-                    streamText(newThreads, callback, false);
-                    currentPost.setContentLinkedIn(newThreads);
+                    streamThreadsChunk(newThreads, callback);
+                    currentPost.setContentThreads(newThreads);
+                } else {
+                    notifyStep(callback, 4, "LinkedIn Sub-agent đang tái cấu trúc bài viết...", "LinkedIn Agent");
+                    String newLi;
+                    if (useRealApi) {
+                        try {
+                            newLi = callLlmApi(config, buildLinkedInUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_LINKEDIN_AGENT);
+                        } catch (Exception ex) {
+                            newLi = generateLinkedInDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
+                        }
+                    } else {
+                        newLi = generateLinkedInDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
+                    }
+                    streamText(newLi, callback, false);
+                    currentPost.setContentLinkedIn(newLi);
                 }
                 mainHandler.post(() -> callback.onCompleted(currentPost));
             } catch (Exception e) {
@@ -597,6 +658,18 @@ public class AIAgentOrchestrator {
         }
     }
 
+    private void streamThreadsChunk(String fullText, AgentCallback callback) throws InterruptedException {
+        String[] words = fullText.split(" ");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            if (isCancelled) return;
+            current.append(word).append(" ");
+            final String textToEmit = current.toString();
+            mainHandler.post(() -> callback.onStreamThreadsChunk(textToEmit));
+            Thread.sleep(25);
+        }
+    }
+
     private void notifyStep(AgentCallback callback, int stepIndex, String title, String agent) {
         mainHandler.post(() -> callback.onStepChanged(stepIndex, title, agent));
     }
@@ -604,6 +677,45 @@ public class AIAgentOrchestrator {
     private void logStep(String step, String agent, String prompt, String output, int tokens, double cost) {
         AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, 600);
         DatabaseHelper.getInstance(context).insertLog(log);
+    }
+
+    private String generateThreadsDraft(String topic, String tone, String language) {
+        if ("English".equalsIgnoreCase(language)) {
+            return "Quick thoughts on " + topic + " 🧵👇\n\n" +
+                    "AI Agents are completely changing how we create and distribute content.\n" +
+                    "Key insight: On-device execution + human review is the winning formula.\n\n" +
+                    "What's your take on this? Let's discuss below! ✨\n#SocialAI #Threads #Tech";
+        }
+        if ("Hài hước".equalsIgnoreCase(tone)) {
+            return "Vừa phát hiện ra một sự thật chấn động về " + topic + " 🧵😂\n\n" +
+                    "Tưởng phức tạp lắm nhưng hóa ra áp dụng AI vào cái nhàn hẳn luôn anh em ạ!\n" +
+                    "Ai chưa thử thì nên thử ngay nhé.\n\n" +
+                    "Anh em thấy đúng không? Thả nhẹ một reply bên dưới nhé 👇\n#ThreadsVN #SocialAI";
+        } else if ("Thân thiện".equalsIgnoreCase(tone)) {
+            return "Góc chia sẻ nhanh về " + topic + " hôm nay 🌿🧵\n\n" +
+                    "Tự động hóa không phải để thay thế con người, mà để chúng ta có thêm thời gian cho những điều ý nghĩa hơn.\n\n" +
+                    "Cả nhà nghĩ sao về xu hướng này? Chúc mọi người ngày mới vui vẻ! ✨\n#ThreadsLife #SocialAI";
+        } else {
+            return "Góc nhìn công nghệ về " + topic + " 🚀🧵\n\n" +
+                    "1. Multi-Agent đang định hình lại cách sáng tạo nội dung.\n" +
+                    "2. Kiểm soát Human-in-the-loop là yếu tố sống còn cho thương hiệu.\n\n" +
+                    "Bạn đã sẵn sàng tích hợp AI Agent vào kênh của mình chưa? 👇\n#SocialAI #MetaThreads #Tech2026";
+        }
+    }
+
+    private String generateFacebookDraft(String topic, String tone, String language) {
+        if ("English".equalsIgnoreCase(language)) {
+            return "🚀 Quick Insights on: " + topic + "\n\n" +
+                    "Technology moves fast, but consistency and smart automation will always win.\n" +
+                    "• 80% repetitive tasks automated with AI\n" +
+                    "• 100% human-verified quality\n\n" +
+                    "Share your thoughts in the comments below! 👍\n#SocialAI #AI2026";
+        }
+        return generateFacebookDraft(topic, tone);
+    }
+
+    private String generateLinkedInDraft(String topic, String tone, String language) {
+        return generateLinkedInDraft(topic, tone);
     }
 
     private String generateFacebookDraft(String topic, String tone) {
