@@ -60,9 +60,44 @@ public class AIAgentOrchestrator {
     private final ExecutorService executorService;
     private final OkHttpClient httpClient;
     private final Gson gson;
-    private boolean isCancelled = false;
+    private volatile boolean isCancelled = false;
+    private int lastCallTokens = 0;
 
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
+
+    // Google Gemini API Endpoint & Model Constants (Issue #5)
+    public static final String PRIMARY_GEMINI_MODEL = "gemini-3.1-flash-lite";
+    private static final String GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
+    private static final String[] GEMINI_FALLBACK_MODELS = {
+            PRIMARY_GEMINI_MODEL,
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash"
+    };
+
+    // Specialized System Prompts for Multi-Agent Architecture (Issue #5)
+    public static final String SYSTEM_PROMPT_ORCHESTRATOR =
+            "Bạn là Master Orchestrator trong hệ thống Multi-Agent sáng tạo nội dung mạng xã hội. " +
+            "Nhiệm vụ của bạn là phân tích chủ đề, xác định thông điệp cốt lõi, góc tiếp cận và cấu trúc lập luận phù hợp cho từng nền tảng (Facebook Page & Threads).";
+
+    public static final String SYSTEM_PROMPT_FACEBOOK_AGENT =
+            "Bạn là Facebook Content Sub-Agent chuyên nghiệp, chuyên quản trị các Fanpage cộng đồng có tương tác cao tại Việt Nam.\n" +
+            "Nguyên tắc viết bài Facebook:\n" +
+            "1. Mở đầu bằng một câu Hook thu hút sự chú ý ngay 2 dòng đầu tiên.\n" +
+            "2. Chia đoạn ngắn (2-3 câu/đoạn), sử dụng emoji hợp lý để tạo nhịp điệu thị giác.\n" +
+            "3. Trình bày 3 luận điểm hoặc giá trị thực tiễn rõ ràng, dễ đọc trên thiết bị di động.\n" +
+            "4. Kết bài bằng câu hỏi mở kích thích bình luận (CTA) và 3-5 hashtags tiếng Việt liên quan.";
+
+    public static final String SYSTEM_PROMPT_THREADS_AGENT =
+            "Bạn là Threads Sub-Agent chuyên nghiệp trên nền tảng Threads (Meta).\n" +
+            "Đặc trưng văn phong Threads:\n" +
+            "1. Viết ngắn gọn, súc tích (dưới 500 ký tự), giọng điệu chân thật (authentic), trò chuyện trực tiếp (conversational).\n" +
+            "2. Đi thẳng vào vấn đề hoặc đưa ra một quan điểm/insight cá nhân sắc bén (hot take/unpopular opinion) mà không dài dòng văn vở.\n" +
+            "3. Ngắt dòng thoáng mắt, dùng tối đa 1-2 emoji tinh tế, tránh nhồi nhét quá nhiều emoji.\n" +
+            "4. Mở ra một luồng thảo luận cởi mở bằng câu hỏi kích thích mọi người để lại suy nghĩ/trải nghiệm bên dưới.";
+
+    // Giữ alias tương thích nếu code cũ còn gọi
+    public static final String SYSTEM_PROMPT_LINKEDIN_AGENT = SYSTEM_PROMPT_THREADS_AGENT;
 
     public AIAgentOrchestrator(Context context) {
         this.context = context.getApplicationContext();
@@ -79,6 +114,24 @@ public class AIAgentOrchestrator {
         isCancelled = true;
     }
 
+    public String buildFacebookUserPrompt(String topic, String tone) {
+        return "Hãy viết một bài đăng Facebook Page hoàn chỉnh bằng tiếng Việt.\n" +
+                "- Chủ đề trọng tâm: " + topic + "\n" +
+                "- Giọng văn (Tone of voice): " + tone + "\n" +
+                "- Yêu cầu: Có hook mở đầu bắt mắt, emoji sinh động, danh sách luận điểm ngắn gọn, câu hỏi thảo luận kêu gọi tương tác và hashtags phù hợp. Không dùng markdown phức tạp.";
+    }
+
+    public String buildThreadsUserPrompt(String topic, String tone) {
+        return "Hãy viết một bài đăng Threads (Meta) ngắn gọn, sắc bén bằng tiếng Việt.\n" +
+                "- Chủ đề trọng tâm: " + topic + "\n" +
+                "- Giọng văn: " + tone + "\n" +
+                "- Yêu cầu: Dưới 500 ký tự, đi thẳng vào góc nhìn thực tế, chân thật, tự nhiên như chia sẻ cá nhân, đặt câu hỏi thảo luận tự nhiên ở cuối bài. Không dùng bullet points cứng nhắc.";
+    }
+
+    public String buildLinkedInUserPrompt(String topic, String tone) {
+        return buildThreadsUserPrompt(topic, tone);
+    }
+
     public void generatePost(String topic, String tone, boolean targetFb, boolean targetLi, AgentCallback callback) {
         isCancelled = false;
         executorService.execute(() -> {
@@ -92,51 +145,57 @@ public class AIAgentOrchestrator {
                 Thread.sleep(600);
                 if (isCancelled) return;
 
-                String brief = "Brief: Topic '" + topic + "' phong cách '" + tone + "'. Kênh: " + (targetFb ? "Facebook " : "") + (targetLi ? "LinkedIn" : "");
+                String brief = "Brief: Topic '" + topic + "' phong cách '" + tone + "'. Kênh: " + (targetFb ? "Facebook " : "") + (targetLi ? "Threads" : "");
                 logStep("Orchestrator Synthesis", "Master Orchestrator", "Topic: " + topic + ", Tone: " + tone, brief, 350, 0.0014);
 
                 String fbFull = "";
-                String liFull = "";
+                String threadsFull = "";
+                int fbTokens = 0;
+                int threadsTokens = 0;
 
                 // Step 2: Facebook Sub-agent Stream
                 if (targetFb) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết bài & tạo hook...", "Facebook Agent");
+                    String fbPrompt = buildFacebookUserPrompt(topic, tone);
                     if (useRealApi) {
                         try {
-                            String prompt = "Viết bài Facebook Page về chủ đề: " + topic + ". Phong cách: " + tone +
-                                    ". Yêu cầu: Có hook mở đầu bắt mắt, emoji sinh động, danh sách luận điểm ngắn gọn, câu hỏi thảo luận kêu gọi tương tác và hashtags phù hợp.";
-                            fbFull = callLlmApi(config, prompt, "Bạn là chuyên gia sáng tạo nội dung Facebook Page chuyên nghiệp.");
+                            fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT);
+                            fbTokens = lastCallTokens > 0 ? lastCallTokens : 580;
                         } catch (Exception ex) {
                             // Fallback to local draft
                             fbFull = generateFacebookDraft(topic, tone);
+                            fbTokens = 580;
                         }
                     } else {
                         fbFull = generateFacebookDraft(topic, tone);
+                        fbTokens = 580;
                     }
 
                     streamText(fbFull, callback, true);
                     if (isCancelled) return;
-                    logStep("Facebook Sub-agent", "Facebook Specialist", "Generate FB post from brief", fbFull.substring(0, Math.min(80, fbFull.length())) + "...", 580, 0.0023);
+                    logStep("Facebook Sub-agent", "Facebook Specialist", fbPrompt, fbFull.substring(0, Math.min(80, fbFull.length())) + "...", fbTokens, fbTokens * 0.000004);
                 }
 
-                // Step 3: LinkedIn Sub-agent Stream
+                // Step 3: Threads Sub-agent Stream
                 if (targetLi) {
-                    notifyStep(callback, 3, "LinkedIn Sub-agent đang tối ưu hóa B2B insights...", "LinkedIn Agent");
+                    notifyStep(callback, 3, "Threads Sub-agent đang tối ưu hóa nội dung tương tác...", "Threads Agent");
+                    String threadsPrompt = buildThreadsUserPrompt(topic, tone);
                     if (useRealApi) {
                         try {
-                            String prompt = "Write a high-impact LinkedIn thought leadership post about: " + topic +
-                                    ". Tone: " + tone + ". Format: Strong opening hook, 3 key architectural/strategic takeaways with bullet points, conclusion calling for professional discussion, relevant hashtags.";
-                            liFull = callLlmApi(config, prompt, "You are a senior tech leader and LinkedIn thought leadership strategist.");
+                            threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT);
+                            threadsTokens = lastCallTokens > 0 ? lastCallTokens : 450;
                         } catch (Exception ex) {
-                            liFull = generateLinkedInDraft(topic, tone);
+                            threadsFull = generateThreadsDraft(topic, tone);
+                            threadsTokens = 450;
                         }
                     } else {
-                        liFull = generateLinkedInDraft(topic, tone);
+                        threadsFull = generateThreadsDraft(topic, tone);
+                        threadsTokens = 450;
                     }
 
-                    streamText(liFull, callback, false);
+                    streamText(threadsFull, callback, false);
                     if (isCancelled) return;
-                    logStep("LinkedIn Sub-agent", "LinkedIn Specialist", "Generate LI thought leadership", liFull.substring(0, Math.min(80, liFull.length())) + "...", 720, 0.0029);
+                    logStep("Threads Sub-agent", "Threads Specialist", threadsPrompt, threadsFull.substring(0, Math.min(80, threadsFull.length())) + "...", threadsTokens, threadsTokens * 0.000004);
                 }
 
                 // Step 4: Visual Agent & Packaging
@@ -148,16 +207,16 @@ public class AIAgentOrchestrator {
                 logStep("Visual Agent", "Visual Designer", imagePrompt, "Generated vector placeholder graphic asset.", 240, 0.001);
 
                 // Record token metrics in SecurePreferenceManager
-                int totalNewTokens = (targetFb ? 580 : 0) + (targetLi ? 720 : 0) + 350 + 240;
+                int totalNewTokens = fbTokens + threadsTokens + 350 + 240;
                 double totalNewCost = totalNewTokens * 0.000004; // ~$0.004 per 1k tokens
                 prefManager.addTokens(totalNewTokens, totalNewCost);
 
-                // Build Final Post
+                // Build Final Post & dispatch to Main Thread
                 Post post = new Post();
                 post.setTopic(topic);
                 post.setTone(tone);
                 post.setContentFacebook(targetFb ? fbFull : "");
-                post.setContentLinkedIn(targetLi ? liFull : "");
+                post.setContentLinkedIn(targetLi ? threadsFull : ""); // Post model lưu content kênh 2
                 post.setTargetFacebook(targetFb);
                 post.setTargetLinkedIn(targetLi);
                 post.setStatus(Post.STATUS_DRAFT);
@@ -179,16 +238,38 @@ public class AIAgentOrchestrator {
         isCancelled = false;
         executorService.execute(() -> {
             try {
+                SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
+                LLMConfig config = prefManager.getConfig();
+                boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+
                 if (isFacebook) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết lại bản mới...", "Facebook Agent");
-                    String newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone());
+                    String newFb;
+                    if (useRealApi) {
+                        try {
+                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_FACEBOOK_AGENT);
+                        } catch (Exception ex) {
+                            newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone());
+                        }
+                    } else {
+                        newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone());
+                    }
                     streamText(newFb, callback, true);
                     currentPost.setContentFacebook(newFb);
                 } else {
-                    notifyStep(callback, 3, "LinkedIn Sub-agent đang tái cấu trúc bài viết...", "LinkedIn Agent");
-                    String newLi = generateLinkedInDraft(currentPost.getTopic(), currentPost.getTone());
-                    streamText(newLi, callback, false);
-                    currentPost.setContentLinkedIn(newLi);
+                    notifyStep(callback, 3, "Threads Sub-agent đang tái cấu trúc bài viết...", "Threads Agent");
+                    String newThreads;
+                    if (useRealApi) {
+                        try {
+                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_THREADS_AGENT);
+                        } catch (Exception ex) {
+                            newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone());
+                        }
+                    } else {
+                        newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone());
+                    }
+                    streamText(newThreads, callback, false);
+                    currentPost.setContentLinkedIn(newThreads);
                 }
                 mainHandler.post(() -> callback.onCompleted(currentPost));
             } catch (Exception e) {
@@ -384,26 +465,46 @@ public class AIAgentOrchestrator {
         });
     }
 
-    // --- REAL API CALL VIA OKHTTP ---
+    // --- REAL API CALL VIA OKHTTP (Google Gemini gemini-3.1-flash-lite:generateContent) ---
     private String callLlmApi(LLMConfig config, String prompt, String systemPrompt) throws IOException {
+        lastCallTokens = 0;
         String cleanApiKey = config.getApiKey() != null ? config.getApiKey().trim().replace("\"", "").replace("'", "") : "";
         if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
-            String[] modelsToTry = {"gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"};
             IOException lastEx = null;
 
-            for (String model : modelsToTry) {
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + cleanApiKey;
+            for (String model : GEMINI_FALLBACK_MODELS) {
+                String url = GEMINI_BASE_URL + model + ":generateContent?key=" + cleanApiKey;
 
                 JsonObject root = new JsonObject();
+
+                // Native Gemini system_instruction
+                if (systemPrompt != null && !systemPrompt.trim().isEmpty()) {
+                    JsonObject sysInst = new JsonObject();
+                    JsonArray sysParts = new JsonArray();
+                    JsonObject sysText = new JsonObject();
+                    sysText.addProperty("text", systemPrompt);
+                    sysParts.add(sysText);
+                    sysInst.add("parts", sysParts);
+                    root.add("system_instruction", sysInst);
+                }
+
+                // User prompt contents
                 JsonArray contents = new JsonArray();
                 JsonObject item = new JsonObject();
+                item.addProperty("role", "user");
                 JsonArray parts = new JsonArray();
                 JsonObject textObj = new JsonObject();
-                textObj.addProperty("text", systemPrompt + "\n\n" + prompt);
+                textObj.addProperty("text", prompt);
                 parts.add(textObj);
                 item.add("parts", parts);
                 contents.add(item);
                 root.add("contents", contents);
+
+                // Generation configuration
+                JsonObject genConfig = new JsonObject();
+                genConfig.addProperty("temperature", 0.7);
+                genConfig.addProperty("maxOutputTokens", 1024);
+                root.add("generationConfig", genConfig);
 
                 Request req = new Request.Builder()
                         .url(url)
@@ -414,6 +515,12 @@ public class AIAgentOrchestrator {
                     if (resp.isSuccessful() && resp.body() != null) {
                         String json = resp.body().string();
                         JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
+                        if (parsed.has("usageMetadata")) {
+                            JsonObject usage = parsed.getAsJsonObject("usageMetadata");
+                            if (usage.has("totalTokenCount")) {
+                                lastCallTokens = usage.get("totalTokenCount").getAsInt();
+                            }
+                        }
                         return parsed.getAsJsonArray("candidates")
                                 .get(0).getAsJsonObject()
                                 .getAsJsonObject("content")
@@ -524,14 +631,22 @@ public class AIAgentOrchestrator {
         }
     }
 
+    private String generateThreadsDraft(String topic, String tone) {
+        if ("Hài hước".equalsIgnoreCase(tone)) {
+            return "Nghĩ cũng buồn cười, cả tuần ngồi mò " + topic + " tưởng cao siêu lắm ai ngờ do thiếu mỗi dấu chấm phẩy 😂\n\n" +
+                    "Bài học rút ra: Công nghệ xịn đến đâu thì AI cũng chỉ gánh 80%, 20% còn lại là độ kiên nhẫn của anh em. Ai chung cảnh ngộ không? 👀";
+        } else if ("Thân thiện".equalsIgnoreCase(tone)) {
+            return "Dạo này mình thử đổi cách tiếp cận với " + topic + " và thấy nhẹ đầu hẳn ✨\n\n" +
+                    "Đôi khi không cần giải pháp quá phức tạp, cứ giữ mọi thứ đơn giản và duy trì đều đặn mỗi ngày là tự khắc thấy kết quả.\n\n" +
+                    "Mọi người hôm nay thế nào rồi? Cùng chia sẻ bên dưới nhé!";
+        } else { // Chuyên gia / Góc nhìn sâu
+            return "Một góc nhìn nhanh về " + topic + " mà mình đúc kết được:\n\n" +
+                    "Hầu hết mọi người tập trung vào công cụ, nhưng sự khác biệt thực sự nằm ở kiến trúc luồng dữ liệu và tư duy tối ưu hóa vận hành.\n\n" +
+                    "Anh em đang làm mảng này thấy nhận định này thế nào? Cùng thảo luận nhé 🧵";
+        }
+    }
+
     private String generateLinkedInDraft(String topic, String tone) {
-        return "Navigating the Shift: Strategic Perspective on " + topic + " 🌐\n\n" +
-                "As technology landscapes evolve toward autonomous workflows and intelligent client-side systems, engineering leaders must reassess key architectural assumptions.\n\n" +
-                "Key Takeaways for Teams & Founders:\n" +
-                "• Modular Specialization: Deploying targeted sub-agents significantly outperforms monolithic pipelines in domain fidelity.\n" +
-                "• Edge-First Resilience: Keeping critical state and queue management on-device ensures uninterrupted operations.\n" +
-                "• Responsible AI Governance: Enforcing human verification gates guarantees brand safety and compliance.\n\n" +
-                "How is your organization structuring its automated workflows this year? Looking forward to your insights in the comments.\n\n" +
-                "#Leadership #ArtificialIntelligence #SoftwareEngineering #TechStrategy #FutureOfWork";
+        return generateThreadsDraft(topic, tone);
     }
 }
