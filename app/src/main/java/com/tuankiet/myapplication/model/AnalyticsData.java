@@ -173,5 +173,25 @@ public class AnalyticsData implements Serializable {
     public void setWeeklyTimeline(List<DayMetric> weeklyTimeline) {
         this.weeklyTimeline = weeklyTimeline;
     }
+
+    // --- HELPER AGGREGATION METRICS FOR OVERVIEW CARDS ---
+    public int getTotalReach() {
+        return facebookReach + linkedinReach;
+    }
+
+    public int getTotalLikes() {
+        return facebookLikes + linkedinLikes;
+    }
+
+    public int getTotalComments() {
+        return facebookComments + linkedinComments;
+    }
+
+    public double getAverageEngagementRate() {
+        int totalReach = getTotalReach();
+        if (totalReach <= 0) return 0.0;
+        int totalInteractions = getTotalLikes() + getTotalComments();
+        return ((double) totalInteractions / totalReach) * 100.0;
+    }
 }
 

@@ -2,7 +2,8 @@ package com.tuankiet.myapplication.model;
 
 public enum SocialPlatform {
     FACEBOOK("Facebook Page", "Facebook"),
-    LINKEDIN("LinkedIn Profile", "LinkedIn");
+    LINKEDIN("LinkedIn Profile", "LinkedIn"),
+    THREADS("Threads Profile", "Threads");
 
     private final String displayName;
     private final String shortName;

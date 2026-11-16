@@ -35,6 +35,12 @@ public class AnalyticsFragment extends Fragment {
     private void loadAnalytics() {
         AnalyticsData data = repository.getAnalyticsData();
 
+        // 0. Overview KPI Cards
+        binding.tvTotalReach.setText(String.format("%,d", data.getTotalReach()));
+        binding.tvTotalLikes.setText(String.format("%,d", data.getTotalLikes()));
+        binding.tvTotalComments.setText(String.format("%,d", data.getTotalComments()));
+        binding.tvAvgRate.setText(String.format("%.2f%%", data.getAverageEngagementRate()));
+
         // 1. Chart Data
         if (data.getWeeklyTimeline() != null) {
             binding.customChartView.setData(data.getWeeklyTimeline());
