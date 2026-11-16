@@ -6,6 +6,7 @@ import android.util.Base64;
 
 import com.tuankiet.myapplication.model.LLMConfig;
 import com.tuankiet.myapplication.model.SocialPlatform;
+import com.tuankiet.myapplication.util.AesEncryptionUtil;
 
 import java.nio.charset.StandardCharsets;
 
@@ -16,7 +17,7 @@ public class SecurePreferenceManager {
     private static final String KEY_DEMO_MODE = "key_demo_mode";
     private static final String KEY_TOKENS = "key_tokens";
     private static final String KEY_COST = "key_cost";
-    private static final String ENCRYPTION_PREFIX = "ENC_AES_";
+    private static final String LEGACY_ENCRYPTION_PREFIX = "ENC_AES_";
 
     // OAuth Keys
     private static final String KEY_FB_TOKEN = "oauth_fb_token";
@@ -43,34 +44,30 @@ public class SecurePreferenceManager {
         return instance;
     }
 
-    // --- ENCRYPTION HELPERS FOR BYOK (PREVENT PLAINTEXT STORAGE) ---
+    // --- HARDWARE-BACKED AES-256-GCM ENCRYPTION HELPERS ---
     private String encryptSecret(String raw) {
         if (raw == null || raw.isEmpty()) return "";
-        try {
-            byte[] bytes = raw.getBytes(StandardCharsets.UTF_8);
-            // XOR Obfuscation + Base64 Encoding for local hardware security
-            for (int i = 0; i < bytes.length; i++) {
-                bytes[i] = (byte) (bytes[i] ^ 0x5A);
-            }
-            return ENCRYPTION_PREFIX + Base64.encodeToString(bytes, Base64.NO_WRAP);
-        } catch (Exception e) {
-            return raw;
-        }
+        return AesEncryptionUtil.encrypt(raw);
     }
 
     private String decryptSecret(String stored) {
         if (stored == null || stored.isEmpty()) return "";
-        if (!stored.startsWith(ENCRYPTION_PREFIX)) return stored;
-        try {
-            String encoded = stored.substring(ENCRYPTION_PREFIX.length());
-            byte[] bytes = Base64.decode(encoded, Base64.NO_WRAP);
-            for (int i = 0; i < bytes.length; i++) {
-                bytes[i] = (byte) (bytes[i] ^ 0x5A);
+
+        // Hỗ trợ tương thích ngược nếu chứa tiền tố XOR cũ
+        if (stored.startsWith(LEGACY_ENCRYPTION_PREFIX)) {
+            try {
+                String encoded = stored.substring(LEGACY_ENCRYPTION_PREFIX.length());
+                byte[] bytes = Base64.decode(encoded, Base64.NO_WRAP);
+                for (int i = 0; i < bytes.length; i++) {
+                    bytes[i] = (byte) (bytes[i] ^ 0x5A);
+                }
+                return new String(bytes, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return stored;
             }
-            return new String(bytes, StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            return stored;
         }
+
+        return AesEncryptionUtil.decrypt(stored);
     }
 
     public LLMConfig getConfig() {
@@ -84,7 +81,7 @@ public class SecurePreferenceManager {
     }
 
     public void saveConfig(String provider, String apiKey, boolean isDemoMode) {
-        String encryptedKey = encryptSecret(apiKey);
+        String encryptedKey = encryptSecret(apiKey != null ? apiKey.trim() : "");
         prefs.edit()
                 .putString(KEY_PROVIDER, provider)
                 .putString(KEY_API_KEY, encryptedKey)
@@ -120,28 +117,46 @@ public class SecurePreferenceManager {
     public void saveOAuthToken(SocialPlatform platform, String accessToken, String refreshToken, long expiresInSeconds) {
         long expiryTime = System.currentTimeMillis() + (expiresInSeconds * 1000L);
         SharedPreferences.Editor editor = prefs.edit();
+
+        String encAccess = encryptSecret(accessToken);
+        String encRefresh = encryptSecret(refreshToken);
+
         if (platform == SocialPlatform.FACEBOOK) {
-            editor.putString(KEY_FB_TOKEN, accessToken);
-            editor.putString(KEY_FB_REFRESH, refreshToken);
+            editor.putString(KEY_FB_TOKEN, encAccess);
+            editor.putString(KEY_FB_REFRESH, encRefresh);
             editor.putLong(KEY_FB_EXPIRY, expiryTime);
         } else {
-            editor.putString(KEY_LI_TOKEN, accessToken);
-            editor.putString(KEY_LI_REFRESH, refreshToken);
+            editor.putString(KEY_LI_TOKEN, encAccess);
+            editor.putString(KEY_LI_REFRESH, encRefresh);
             editor.putLong(KEY_LI_EXPIRY, expiryTime);
         }
         editor.apply();
     }
 
     public String getOAuthToken(SocialPlatform platform) {
-        return platform == SocialPlatform.FACEBOOK ?
-                prefs.getString(KEY_FB_TOKEN, "EAAG_mock_fb_access_token_socialai") :
-                prefs.getString(KEY_LI_TOKEN, "AQV_mock_li_access_token_socialai");
+        String defaultToken = platform == SocialPlatform.FACEBOOK ?
+                "EAAG_mock_fb_access_token_socialai" :
+                "AQV_mock_li_access_token_socialai";
+
+        String stored = platform == SocialPlatform.FACEBOOK ?
+                prefs.getString(KEY_FB_TOKEN, defaultToken) :
+                prefs.getString(KEY_LI_TOKEN, defaultToken);
+
+        if (defaultToken.equals(stored)) return defaultToken;
+        return decryptSecret(stored);
     }
 
     public String getOAuthRefreshToken(SocialPlatform platform) {
-        return platform == SocialPlatform.FACEBOOK ?
-                prefs.getString(KEY_FB_REFRESH, "fb_mock_refresh_token_12345") :
-                prefs.getString(KEY_LI_REFRESH, "li_mock_refresh_token_67890");
+        String defaultRefresh = platform == SocialPlatform.FACEBOOK ?
+                "fb_mock_refresh_token_12345" :
+                "li_mock_refresh_token_67890";
+
+        String stored = platform == SocialPlatform.FACEBOOK ?
+                prefs.getString(KEY_FB_REFRESH, defaultRefresh) :
+                prefs.getString(KEY_LI_REFRESH, defaultRefresh);
+
+        if (defaultRefresh.equals(stored)) return defaultRefresh;
+        return decryptSecret(stored);
     }
 
     public boolean isTokenExpired(SocialPlatform platform) {
@@ -163,10 +178,14 @@ public class SecurePreferenceManager {
     }
 
     public void saveThreadsToken(String token) {
-        prefs.edit().putString(KEY_THREADS_TOKEN, token != null ? token.trim() : "").apply();
+        String clean = token != null ? token.trim() : "";
+        String encToken = encryptSecret(clean);
+        prefs.edit().putString(KEY_THREADS_TOKEN, encToken).apply();
     }
 
     public String getThreadsToken() {
-        return prefs.getString(KEY_THREADS_TOKEN, "");
+        String stored = prefs.getString(KEY_THREADS_TOKEN, "");
+        if (stored.isEmpty()) return "";
+        return decryptSecret(stored);
     }
 }
