@@ -134,37 +134,43 @@ public class SecurePreferenceManager {
     }
 
     public String getOAuthToken(SocialPlatform platform) {
-        String defaultToken = platform == SocialPlatform.FACEBOOK ?
-                "EAAG_mock_fb_access_token_socialai" :
-                "AQV_mock_li_access_token_socialai";
-
-        String stored = platform == SocialPlatform.FACEBOOK ?
-                prefs.getString(KEY_FB_TOKEN, defaultToken) :
-                prefs.getString(KEY_LI_TOKEN, defaultToken);
-
-        if (defaultToken.equals(stored)) return defaultToken;
+        String stored = "";
+        if (platform == SocialPlatform.FACEBOOK) {
+            stored = prefs.getString(KEY_FB_TOKEN, "");
+        } else if (platform == SocialPlatform.LINKEDIN) {
+            stored = prefs.getString(KEY_LI_TOKEN, "");
+        }
         return decryptSecret(stored);
     }
 
     public String getOAuthRefreshToken(SocialPlatform platform) {
-        String defaultRefresh = platform == SocialPlatform.FACEBOOK ?
-                "fb_mock_refresh_token_12345" :
-                "li_mock_refresh_token_67890";
-
-        String stored = platform == SocialPlatform.FACEBOOK ?
-                prefs.getString(KEY_FB_REFRESH, defaultRefresh) :
-                prefs.getString(KEY_LI_REFRESH, defaultRefresh);
-
-        if (defaultRefresh.equals(stored)) return defaultRefresh;
+        String stored = "";
+        if (platform == SocialPlatform.FACEBOOK) {
+            stored = prefs.getString(KEY_FB_REFRESH, "");
+        } else if (platform == SocialPlatform.LINKEDIN) {
+            stored = prefs.getString(KEY_LI_REFRESH, "");
+        }
         return decryptSecret(stored);
     }
 
     public boolean isTokenExpired(SocialPlatform platform) {
-        long expiry = platform == SocialPlatform.FACEBOOK ?
-                prefs.getLong(KEY_FB_EXPIRY, 0L) :
-                prefs.getLong(KEY_LI_EXPIRY, 0L);
-        // If 0, assume valid mock session
-        return expiry > 0 && System.currentTimeMillis() > expiry;
+        String token = getOAuthToken(platform);
+
+        if (token == null || token.trim().isEmpty()) {
+            return true;
+        }
+
+        long expiry;
+
+        if (platform == SocialPlatform.FACEBOOK) {
+            expiry = prefs.getLong(KEY_FB_EXPIRY, 0L);
+        } else if (platform == SocialPlatform.LINKEDIN) {
+            expiry = prefs.getLong(KEY_LI_EXPIRY, 0L);
+        } else {
+            return true;
+        }
+
+        return expiry <= 0L || System.currentTimeMillis() >= expiry;
     }
 
     public void clearOAuthToken(SocialPlatform platform) {
@@ -187,5 +193,11 @@ public class SecurePreferenceManager {
         String stored = prefs.getString(KEY_THREADS_TOKEN, "");
         if (stored.isEmpty()) return "";
         return decryptSecret(stored);
+    }
+
+    public void clearThreadsToken() {
+        prefs.edit()
+                .remove(KEY_THREADS_TOKEN)
+                .apply();
     }
 }

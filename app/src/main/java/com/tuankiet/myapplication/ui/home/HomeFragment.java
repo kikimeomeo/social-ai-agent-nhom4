@@ -19,6 +19,7 @@ import com.tuankiet.myapplication.model.Post;
 import com.tuankiet.myapplication.model.SocialAccount;
 import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.repository.MockDataRepository;
+import com.tuankiet.myapplication.data.SecurePreferenceManager;
 
 import java.util.List;
 
@@ -67,6 +68,14 @@ public class HomeFragment extends Fragment {
 
     public void loadData() {
         if (binding == null) return;
+
+        boolean demoMode = SecurePreferenceManager
+                .getInstance(requireContext())
+                .isDemoMode();
+
+        binding.tvHomeModeBadge.setVisibility(
+                demoMode ? View.VISIBLE : View.GONE
+        );
 
         // Accounts info
         List<SocialAccount> accounts = repository.getAccounts();

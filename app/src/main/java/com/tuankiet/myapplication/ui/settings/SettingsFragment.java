@@ -29,6 +29,7 @@ public class SettingsFragment extends Fragment {
     private FragmentSettingsBinding binding;
     private SecurePreferenceManager prefManager;
     private MockDataRepository repository;
+    private boolean updatingAccountUi = false;
 
     @Nullable
     @Override
@@ -45,27 +46,25 @@ public class SettingsFragment extends Fragment {
 
         loadSettings();
         setupListeners();
+        // Tam khoa ket noi OAuth khi chua cau hinh
+        binding.switchFbConnection.setEnabled(false);
+        binding.switchLiConnection.setEnabled(false);
     }
 
     private void loadSettings() {
         // 1. Accounts
-        List<SocialAccount> accounts = repository.getAccounts();
-        for (SocialAccount acc : accounts) {
-            if (acc.getPlatform() == SocialPlatform.FACEBOOK) {
-                binding.tvSettingsFbDesc.setText(acc.getAccountName() + " (" + acc.getHandle() + ")");
-                binding.switchFbConnection.setChecked(acc.isConnected());
-            } else if (acc.getPlatform() == SocialPlatform.LINKEDIN) {
-                binding.tvSettingsLiDesc.setText(acc.getAccountName() + " (" + acc.getHandle() + ")");
-                binding.switchLiConnection.setChecked(acc.isConnected());
-            }
-        }
+        refreshAccountDisplay();
 
         // 1.1 Threads Token
         String threadsToken = prefManager.getThreadsToken();
         if (threadsToken != null && !threadsToken.isEmpty()) {
             binding.etSettingsThreadsToken.setText(threadsToken);
-            binding.tvSettingsThreadsDesc.setText("Đã lưu Token • Sẵn sàng đăng tự động");
-            binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.status_green));
+            binding.tvSettingsThreadsDesc.setText(
+                    "Đã lưu Token • Chưa xác minh kết nối"
+            );
+            binding.tvSettingsThreadsDesc.setTextColor(
+                    getResources().getColor(R.color.text_secondary)
+            );
         } else {
             binding.tvSettingsThreadsDesc.setText("Chưa cấu hình Token");
             binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.text_secondary));
@@ -151,6 +150,8 @@ public class SettingsFragment extends Fragment {
 
         // Toggle Facebook
         binding.switchFbConnection.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (updatingAccountUi) return;
+
             if (isChecked) {
                 OAuthManager.getInstance(requireContext()).launchOAuth(requireActivity(), SocialPlatform.FACEBOOK);
             } else {
@@ -161,6 +162,8 @@ public class SettingsFragment extends Fragment {
 
         // Toggle LinkedIn
         binding.switchLiConnection.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (updatingAccountUi) return;
+
             if (isChecked) {
                 OAuthManager.getInstance(requireContext()).launchOAuth(requireActivity(), SocialPlatform.LINKEDIN);
             } else {
@@ -178,15 +181,37 @@ public class SettingsFragment extends Fragment {
                 return;
             }
             prefManager.saveThreadsToken(token);
-            binding.tvSettingsThreadsDesc.setText("Đã lưu Token • Sẵn sàng đăng tự động");
-            binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.status_green));
+            binding.tvSettingsThreadsDesc.setText(
+                    "Đã lưu Token • Chưa xác minh kết nối"
+            );
+            binding.tvSettingsThreadsDesc.setTextColor(
+                    getResources().getColor(R.color.text_secondary)
+            );
             Toast.makeText(getContext(), "🎉 Đã lưu Threads Token thành công!", Toast.LENGTH_SHORT).show();
+        });
+
+        // Disconnect Threads
+        binding.btnDisconnectThreads.setOnClickListener(v -> {
+            prefManager.clearThreadsToken();
+
+            binding.etSettingsThreadsToken.setText("");
+            binding.tvSettingsThreadsDesc.setText("Chưa cấu hình Token");
+            binding.tvSettingsThreadsDesc.setTextColor(
+                    getResources().getColor(R.color.text_secondary)
+            );
+
+            Toast.makeText(
+                    requireContext(),
+                    "Đã xóa Threads Token trên thiết bị!",
+                    Toast.LENGTH_SHORT
+            ).show();
         });
 
         // Toggle Demo Mode
         binding.switchDemoMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefManager.setDemoMode(isChecked);
             updateApiKeyInputState(isChecked);
+            refreshAccountDisplay();
             String status = isChecked ? "Đã BẬT Chế độ Demo (Không tốn token API)" : "Đã TẮT Chế độ Demo (Sử dụng API Key thực tế)";
             Toast.makeText(getContext(), status, Toast.LENGTH_SHORT).show();
         });
@@ -253,6 +278,42 @@ public class SettingsFragment extends Fragment {
             updateTokenMetrics(updated);
             Toast.makeText(getContext(), "Đã đặt lại bộ đếm token về 0", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void refreshAccountDisplay() {
+        if (binding == null) return;
+
+        boolean demoMode = prefManager.isDemoMode();
+        List<SocialAccount> accounts = repository.getAccounts();
+
+        updatingAccountUi = true;
+
+        try {
+            for (SocialAccount acc : accounts) {
+                String description = acc.getAccountName()
+                        + " (" + acc.getHandle() + ")";
+
+                if (demoMode) {
+                    description += " • TÀI KHOẢN DEMO";
+                } else {
+                    description += " • Chưa xác minh OAuth";
+                }
+
+                boolean displayedConnected = demoMode && acc.isConnected();
+
+                if (acc.getPlatform() == SocialPlatform.FACEBOOK) {
+                    binding.tvSettingsFbDesc.setText(description);
+                    binding.switchFbConnection.setChecked(displayedConnected);
+                    binding.switchFbConnection.setEnabled(false);
+                } else if (acc.getPlatform() == SocialPlatform.LINKEDIN) {
+                    binding.tvSettingsLiDesc.setText(description);
+                    binding.switchLiConnection.setChecked(displayedConnected);
+                    binding.switchLiConnection.setEnabled(false);
+                }
+            }
+        } finally {
+            updatingAccountUi = false;
+        }
     }
 
     @Override

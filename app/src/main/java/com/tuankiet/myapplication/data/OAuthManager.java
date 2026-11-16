@@ -67,57 +67,52 @@ public class OAuthManager {
     }
 
     public boolean handleDeepLinkCallback(Uri uri, OAuthCallback callback) {
-        if (uri == null) return false;
+        if (uri == null) {
+            return false;
+        }
 
         String scheme = uri.getScheme();
         String host = uri.getHost();
 
-        if ("socialai".equalsIgnoreCase(scheme) && "oauth-callback".equalsIgnoreCase(host)) {
-            String state = uri.getQueryParameter("state");
-            String code = uri.getQueryParameter("code");
-            String token = uri.getQueryParameter("access_token");
-
-            SocialPlatform platform = SocialPlatform.FACEBOOK;
-            if ("linkedin".equalsIgnoreCase(state) || (uri.toString().contains("linkedin"))) {
-                platform = SocialPlatform.LINKEDIN;
-            }
-
-            String effectiveToken = token != null ? token : (code != null ? code : "mock_access_token_" + System.currentTimeMillis());
-            String refreshToken = "mock_refresh_token_" + System.currentTimeMillis();
-
-            // Save tokens with 60 days validity
-            SecurePreferenceManager.getInstance(context).saveOAuthToken(platform, effectiveToken, refreshToken, 5184000L);
-
-            // Update Account state in Database
-            DatabaseHelper dbHelper = DatabaseHelper.getInstance(context);
-            List<SocialAccount> accounts = dbHelper.getAllAccounts();
-            for (SocialAccount acc : accounts) {
-                if (acc.getPlatform() == platform) {
-                    acc.setConnected(true);
-                    acc.setStatusMessage("Đã xác thực OAuth 2.0 thành công");
-                    dbHelper.insertOrUpdateAccount(acc);
-                    break;
-                }
-            }
-
-            if (callback != null) {
-                callback.onSuccess(platform, "Đăng nhập OAuth 2.0 thành công kênh " + platform.getDisplayName() + "!");
-            }
-            return true;
+        if (!"socialai".equalsIgnoreCase(scheme)
+                || !"oauth-callback".equalsIgnoreCase(host)) {
+            return false;
         }
-        return false;
+
+        // OAuth thật chưa được cấu hình và xác minh đầy đủ.
+        // Không chấp nhận code hoặc token từ Deep Link là hợp lệ.
+        if (callback != null) {
+            callback.onError(
+                    "OAuth chưa được cấu hình đầy đủ. " +
+                            "Không thể xác nhận kết nối tài khoản."
+            );
+        }
+
+        return true;
     }
 
-    public void checkAndRefreshTokenIfNeeded(SocialPlatform platform, OAuthCallback callback) {
-        SecurePreferenceManager prefs = SecurePreferenceManager.getInstance(context);
-        if (prefs.isTokenExpired(platform)) {
-            // Simulate refresh token exchange
-            String newAccessToken = "refreshed_access_token_" + System.currentTimeMillis();
-            String refreshToken = prefs.getOAuthRefreshToken(platform);
-            prefs.saveOAuthToken(platform, newAccessToken, refreshToken, 5184000L);
-            if (callback != null) {
-                callback.onSuccess(platform, "Đã tự động làm mới token (Refresh Token) cho " + platform.getShortName());
-            }
+    public void checkAndRefreshTokenIfNeeded(
+            SocialPlatform platform,
+            OAuthCallback callback
+    ) {
+        SecurePreferenceManager prefs =
+                SecurePreferenceManager.getInstance(context);
+
+        if (!prefs.isTokenExpired(platform)) {
+            // Token chưa hết hạn theo dữ liệu cục bộ.
+            // Không có nghĩa là OAuth đã được xác minh.
+            return;
+        }
+
+        // OAuth thật chưa hỗ trợ refresh token.
+        // Xóa token không còn hợp lệ, không tạo token giả.
+        prefs.clearOAuthToken(platform);
+
+        if (callback != null) {
+            callback.onError(
+                    "Chưa có token hợp lệ hoặc token đã hết hạn. " +
+                            "Chức năng làm mới OAuth chưa được triển khai."
+            );
         }
     }
 
