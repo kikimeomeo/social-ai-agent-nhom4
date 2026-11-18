@@ -93,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBottomNavigation() {
+        binding.fabCenterCreate.setOnClickListener(v -> navigateToTab(R.id.nav_create));
+
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.nav_home) {

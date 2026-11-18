@@ -60,7 +60,10 @@ public class AnalyticsFragment extends Fragment {
         // 3. AI Weekly Summary Report
         binding.tvTopPost.setText(data.getTopPerformingPost());
         binding.tvWeeklySummary.setText(data.getWeeklyAiSummary());
-        binding.tvNextWeekAdvice.setText("💡 " + data.getNextWeekAdvice());
+        String advice = data.getNextWeekAdvice() != null
+                ? data.getNextWeekAdvice().replace("LinkedIn", "Threads")
+                : "";
+        binding.tvNextWeekAdvice.setText(advice);
     }
 
     @Override

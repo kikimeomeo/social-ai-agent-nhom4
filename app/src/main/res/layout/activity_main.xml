@@ -6,6 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_main"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     tools:context=".MainActivity">
 
     <!-- Fragment Container -->
@@ -15,18 +17,40 @@
         android:layout_height="match_parent"
         android:layout_above="@id/bottomNavigation" />
 
-    <!-- Bottom Navigation View -->
+    <!-- Bottom Navigation View (slim 62dp bar matching HTML prototype) -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="62dp"
         android:layout_alignParentBottom="true"
         android:background="@color/card_bg"
-        android:elevation="8dp"
-        app:itemIconSize="22dp"
+        android:elevation="10dp"
+        android:minHeight="0dp"
+        app:itemActiveIndicatorStyle="@style/BottomNavNoIndicator"
+        app:itemIconSize="20dp"
         app:itemIconTint="@color/bottom_nav_color"
+        app:itemPaddingTop="7dp"
+        app:itemPaddingBottom="8dp"
+        app:itemRippleColor="@color/primary_light"
+        app:itemTextAppearanceActive="@style/BottomNavText"
+        app:itemTextAppearanceInactive="@style/BottomNavText"
         app:itemTextColor="@color/bottom_nav_color"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav_menu" />
+
+    <!-- Centered Floating "+" Button -->
+    <ImageButton
+        android:id="@+id/fabCenterCreate"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/bg_center_plus_fab"
+        android:contentDescription="@string/nav_create"
+        android:elevation="14dp"
+        android:padding="15dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_plus" />
 
 </RelativeLayout>
