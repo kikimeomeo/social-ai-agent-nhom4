@@ -63,6 +63,9 @@ public class AIAgentOrchestrator {
     private final Gson gson;
     private volatile boolean isCancelled = false;
     private int lastCallTokens = 0;
+    private int lastInputTokens = 0;
+    private int lastOutputTokens = 0;
+    private String lastUsedModel = "gemini-3.1-flash-lite";
 
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
 
@@ -154,6 +157,13 @@ public class AIAgentOrchestrator {
                 SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
                 LLMConfig config = prefManager.getConfig();
                 boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+                if (!useRealApi) {
+                    lastUsedModel = "demo-mock-engine";
+                } else if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = PRIMARY_GEMINI_MODEL;
+                } else if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = "gpt-4o-mini";
+                }
 
                 // Step 1: Orchestrator Synthesizes Brief
                 notifyStep(callback, 1, "Orchestrator đang lập brief chiến lược...", "Master Orchestrator");
@@ -175,12 +185,15 @@ public class AIAgentOrchestrator {
                 if (targetFb) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết bài & tạo hook...", "Facebook Agent");
                     String fbPrompt = buildFacebookUserPrompt(topic, tone, language);
+                    boolean fbApiFailed = false;
                     if (useRealApi) {
                         try {
                             fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT);
                             fbTokens = lastCallTokens > 0 ? lastCallTokens : 580;
                         } catch (Exception ex) {
-                            // Fallback to local draft
+                            fbApiFailed = true;
+                            logStep("❌ Facebook Sub-agent (Lỗi API)", "Facebook Specialist", fbPrompt,
+                                    "[LỖI] " + ex.getMessage() + "\n(Đã chuyển sang bản nháp dự phòng)", 0, 0.0);
                             fbFull = generateFacebookDraft(topic, tone, language);
                             fbTokens = 580;
                         }
@@ -191,18 +204,25 @@ public class AIAgentOrchestrator {
 
                     streamText(fbFull, callback, true);
                     if (isCancelled) return;
-                    logStep("Facebook Sub-agent", "Facebook Specialist", fbPrompt, fbFull.substring(0, Math.min(80, fbFull.length())) + "...", fbTokens, fbTokens * 0.000004);
+                    if (!fbApiFailed) {
+                        logStep("Facebook Sub-agent", "Facebook Specialist",
+                                formatPromptWithTokens(fbPrompt), truncateForLog(fbFull), fbTokens, fbTokens * 0.000004);
+                    }
                 }
 
                 // Step 3: Threads Sub-agent Stream
                 if (targetThreads) {
                     notifyStep(callback, 3, "Threads Sub-agent đang tối ưu bài ngắn (≤ 500 ký tự)...", "Threads Agent");
                     String threadsPrompt = buildThreadsUserPrompt(topic, tone, language);
+                    boolean threadsApiFailed = false;
                     if (useRealApi) {
                         try {
                             threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT);
                             threadsTokens = lastCallTokens > 0 ? lastCallTokens : 420;
                         } catch (Exception ex) {
+                            threadsApiFailed = true;
+                            logStep("❌ Threads Sub-agent (Lỗi API)", "Threads Specialist", threadsPrompt,
+                                    "[LỖI] " + ex.getMessage() + "\n(Đã chuyển sang bản nháp dự phòng)", 0, 0.0);
                             threadsFull = generateThreadsDraft(topic, tone, language);
                             threadsTokens = 420;
                         }
@@ -213,18 +233,25 @@ public class AIAgentOrchestrator {
 
                     streamThreadsChunk(threadsFull, callback);
                     if (isCancelled) return;
-                    logStep("Threads Sub-agent", "Threads Specialist", threadsPrompt, threadsFull.substring(0, Math.min(80, threadsFull.length())) + "...", threadsTokens, threadsTokens * 0.000004);
+                    if (!threadsApiFailed) {
+                        logStep("Threads Sub-agent", "Threads Specialist",
+                                formatPromptWithTokens(threadsPrompt), truncateForLog(threadsFull), threadsTokens, threadsTokens * 0.000004);
+                    }
                 }
 
                 // Step 4: LinkedIn Sub-agent Stream (compat)
                 if (targetLi) {
                     notifyStep(callback, 4, "LinkedIn Sub-agent đang tối ưu hóa B2B insights...", "LinkedIn Agent");
                     String liPrompt = buildLinkedInUserPrompt(topic, tone);
+                    boolean liApiFailed = false;
                     if (useRealApi) {
                         try {
                             liFull = callLlmApi(config, liPrompt, SYSTEM_PROMPT_LINKEDIN_AGENT);
                             liTokens = lastCallTokens > 0 ? lastCallTokens : 720;
                         } catch (Exception ex) {
+                            liApiFailed = true;
+                            logStep("❌ LinkedIn Sub-agent (Lỗi API)", "LinkedIn Strategist", liPrompt,
+                                    "[LỖI] " + ex.getMessage(), 0, 0.0);
                             liFull = generateLinkedInDraft(topic, tone, language);
                             liTokens = 720;
                         }
@@ -235,7 +262,10 @@ public class AIAgentOrchestrator {
 
                     streamText(liFull, callback, false);
                     if (isCancelled) return;
-                    logStep("LinkedIn Sub-agent", "LinkedIn Strategist", liPrompt, liFull.substring(0, Math.min(80, liFull.length())) + "...", liTokens, liTokens * 0.000004);
+                    if (!liApiFailed) {
+                        logStep("LinkedIn Sub-agent", "LinkedIn Strategist",
+                                formatPromptWithTokens(liPrompt), truncateForLog(liFull), liTokens, liTokens * 0.000004);
+                    }
                 }
 
                 // Step 5: Visual Agent & Packaging
@@ -288,6 +318,13 @@ public class AIAgentOrchestrator {
                 SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
                 LLMConfig config = prefManager.getConfig();
                 boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+                if (!useRealApi) {
+                    lastUsedModel = "demo-mock-engine";
+                } else if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = PRIMARY_GEMINI_MODEL;
+                } else if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = "gpt-4o-mini";
+                }
 
                 if (platformIndex == 0) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết lại bản mới...", "Facebook Agent");
@@ -529,6 +566,8 @@ public class AIAgentOrchestrator {
     // --- REAL API CALL VIA OKHTTP (Google Gemini gemini-3.1-flash-lite:generateContent) ---
     private String callLlmApi(LLMConfig config, String prompt, String systemPrompt) throws IOException {
         lastCallTokens = 0;
+        lastInputTokens = 0;
+        lastOutputTokens = 0;
         String cleanApiKey = config.getApiKey() != null ? config.getApiKey().trim().replace("\"", "").replace("'", "") : "";
         if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
             IOException lastEx = null;
@@ -578,10 +617,17 @@ public class AIAgentOrchestrator {
                         JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
                         if (parsed.has("usageMetadata")) {
                             JsonObject usage = parsed.getAsJsonObject("usageMetadata");
+                            if (usage.has("promptTokenCount")) {
+                                lastInputTokens = usage.get("promptTokenCount").getAsInt();
+                            }
+                            if (usage.has("candidatesTokenCount")) {
+                                lastOutputTokens = usage.get("candidatesTokenCount").getAsInt();
+                            }
                             if (usage.has("totalTokenCount")) {
                                 lastCallTokens = usage.get("totalTokenCount").getAsInt();
                             }
                         }
+                        lastUsedModel = model;
                         return parsed.getAsJsonArray("candidates")
                                 .get(0).getAsJsonObject()
                                 .getAsJsonObject("content")
@@ -629,6 +675,20 @@ public class AIAgentOrchestrator {
                 if (resp.isSuccessful() && resp.body() != null) {
                     String json = resp.body().string();
                     JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
+                    if (parsed.has("usage")) {
+                        JsonObject usage = parsed.getAsJsonObject("usage");
+                        if (usage.has("prompt_tokens")) {
+                            lastInputTokens = usage.get("prompt_tokens").getAsInt();
+                        }
+                        if (usage.has("completion_tokens")) {
+                            lastOutputTokens = usage.get("completion_tokens").getAsInt();
+                        }
+                        if (usage.has("total_tokens")) {
+                            lastCallTokens = usage.get("total_tokens").getAsInt();
+                        }
+                    }
+                    lastUsedModel = LLMConfig.PROVIDER_OPENROUTER.equalsIgnoreCase(config.getProvider()) ?
+                            "openrouter/auto" : "gpt-4o-mini";
                     return parsed.getAsJsonArray("choices")
                             .get(0).getAsJsonObject()
                             .getAsJsonObject("message")
@@ -674,8 +734,26 @@ public class AIAgentOrchestrator {
         mainHandler.post(() -> callback.onStepChanged(stepIndex, title, agent));
     }
 
+    private String formatPromptWithTokens(String prompt) {
+        if (lastInputTokens > 0 || lastOutputTokens > 0) {
+            return "[Token Input: " + lastInputTokens + " | Output: " + lastOutputTokens + "]\n\n" + prompt;
+        }
+        return prompt;
+    }
+
+    private String truncateForLog(String text) {
+        if (text == null) return "";
+        if (text.length() <= 2000) return text;
+        return text.substring(0, 2000) + "\n...(đã rút gọn)";
+    }
+
     private void logStep(String step, String agent, String prompt, String output, int tokens, double cost) {
-        AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, 600);
+        logStep(step, agent, prompt, output, tokens, cost, lastUsedModel);
+    }
+
+    private void logStep(String step, String agent, String prompt, String output, int tokens, double cost, String model) {
+        AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, 600,
+                model != null ? model : lastUsedModel);
         DatabaseHelper.getInstance(context).insertLog(log);
     }
 

@@ -12,12 +12,18 @@ public class AgentLog implements Serializable {
     private int tokensUsed;
     private double costEstimate;
     private long durationMs;
+    private String modelName;
 
     public AgentLog() {
     }
 
     public AgentLog(long id, long timestamp, String stepName, String agentRole, String promptUsed,
                     String outputSnippet, int tokensUsed, double costEstimate, long durationMs) {
+        this(id, timestamp, stepName, agentRole, promptUsed, outputSnippet, tokensUsed, costEstimate, durationMs, "gemini-3.1-flash-lite");
+    }
+
+    public AgentLog(long id, long timestamp, String stepName, String agentRole, String promptUsed,
+                    String outputSnippet, int tokensUsed, double costEstimate, long durationMs, String modelName) {
         this.id = id;
         this.timestamp = timestamp;
         this.stepName = stepName;
@@ -27,6 +33,7 @@ public class AgentLog implements Serializable {
         this.tokensUsed = tokensUsed;
         this.costEstimate = costEstimate;
         this.durationMs = durationMs;
+        this.modelName = modelName;
     }
 
     public long getId() {
@@ -99,6 +106,14 @@ public class AgentLog implements Serializable {
 
     public void setDurationMs(long durationMs) {
         this.durationMs = durationMs;
+    }
+
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
     }
 }
 
