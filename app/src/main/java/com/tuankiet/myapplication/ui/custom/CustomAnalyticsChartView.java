@@ -48,26 +48,26 @@ public class CustomAnalyticsChartView extends View {
     }
 
     private void init() {
-        axisPaint.setColor(Color.parseColor("#E2E8F0"));
+        axisPaint.setColor(Color.parseColor("#EAE5DC"));
         axisPaint.setStrokeWidth(2f);
 
-        gridPaint.setColor(Color.parseColor("#F1F5F9"));
+        gridPaint.setColor(Color.parseColor("#F3EFE7"));
         gridPaint.setStrokeWidth(1.5f);
 
-        labelPaint.setColor(Color.parseColor("#64748B"));
+        labelPaint.setColor(Color.parseColor("#78716C"));
         labelPaint.setTextSize(spToPx(11));
         labelPaint.setTextAlign(Paint.Align.CENTER);
 
         fbBarPaint.setColor(Color.parseColor("#1877F2"));
-        liBarPaint.setColor(Color.parseColor("#0A66C2"));
+        liBarPaint.setColor(Color.parseColor("#1C1917"));
 
-        linePaint.setColor(Color.parseColor("#4F46E5"));
+        linePaint.setColor(Color.parseColor("#0284C7"));
         linePaint.setStrokeWidth(4f);
         linePaint.setStyle(Paint.Style.STROKE);
 
         lineFillPaint.setStyle(Paint.Style.FILL);
 
-        pointPaint.setColor(Color.parseColor("#4F46E5"));
+        pointPaint.setColor(Color.parseColor("#0284C7"));
         pointPaint.setStyle(Paint.Style.FILL);
     }
 
@@ -93,85 +93,70 @@ public class CustomAnalyticsChartView extends View {
         int height = getHeight();
         if (width <= 0 || height <= 0 || data.isEmpty()) return;
 
-        float paddingLeft = dpToPx(36);
-        float paddingRight = dpToPx(16);
-        float paddingTop = dpToPx(24);
-        float paddingBottom = dpToPx(36);
+        float paddingLeft = dpToPx(14);
+        float paddingRight = dpToPx(14);
+        float paddingTop = dpToPx(12);
+        float paddingBottom = dpToPx(28);
 
         float chartWidth = width - paddingLeft - paddingRight;
         float chartHeight = height - paddingTop - paddingBottom;
 
-        // Draw horizontal grid lines (3 lines: 0%, 50%, 100%)
-        for (int i = 0; i <= 3; i++) {
-            float y = paddingTop + chartHeight * (1f - (float) i / 3f);
-            canvas.drawLine(paddingLeft, y, width - paddingRight, y, gridPaint);
-
-            int valLabel = (int) (maxVal * (float) i / 3f);
-            labelPaint.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText(String.valueOf(valLabel), paddingLeft - dpToPx(6), y + dpToPx(4), labelPaint);
-        }
-
-        // Base Axis
-        canvas.drawLine(paddingLeft, paddingTop + chartHeight, width - paddingRight, paddingTop + chartHeight, axisPaint);
-
-        // Draw bars and points for each day
+        // Draw clean trend line with soft Ocean Blue fill (no noisy Y-axis labels/grid, matching reference)
         int n = data.size();
-        float slotWidth = chartWidth / n;
-        float barWidth = dpToPx(10);
+        float stepX = n > 1 ? chartWidth / (n - 1) : chartWidth;
 
         Path linePath = new Path();
         Path fillPath = new Path();
-        fillPath.moveTo(paddingLeft, paddingTop + chartHeight);
+
+        float lastX = paddingLeft;
+        float lastY = paddingTop + chartHeight;
 
         for (int i = 0; i < n; i++) {
             AnalyticsData.DayMetric m = data.get(i);
-            float centerX = paddingLeft + slotWidth * i + slotWidth / 2f;
+            float centerX = paddingLeft + i * stepX;
 
-            // Facebook bar
-            float fbRatio = (float) m.getFacebookEngagement() / maxVal;
-            float fbH = chartHeight * fbRatio;
-            float fbLeft = centerX - barWidth - dpToPx(2);
-            float fbTop = paddingTop + chartHeight - fbH;
-            RectF fbRect = new RectF(fbLeft, fbTop, fbLeft + barWidth, paddingTop + chartHeight);
-            canvas.drawRoundRect(fbRect, dpToPx(4), dpToPx(4), fbBarPaint);
-
-            // LinkedIn bar
-            float liRatio = (float) m.getLinkedinEngagement() / maxVal;
-            float liH = chartHeight * liRatio;
-            float liLeft = centerX + dpToPx(2);
-            float liTop = paddingTop + chartHeight - liH;
-            RectF liRect = new RectF(liLeft, liTop, liLeft + barWidth, paddingTop + chartHeight);
-            canvas.drawRoundRect(liRect, dpToPx(4), dpToPx(4), liBarPaint);
-
-            // Day label
-            labelPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText(m.getDayLabel(), centerX, height - dpToPx(12), labelPaint);
-
-            // Total indicator point on top of bars
             float totalRatio = (float) (m.getFacebookEngagement() + m.getLinkedinEngagement()) / (maxVal * 1.8f);
             float totalY = paddingTop + chartHeight - (chartHeight * Math.min(1.0f, totalRatio));
+
             if (i == 0) {
                 linePath.moveTo(centerX, totalY);
+                fillPath.moveTo(centerX, paddingTop + chartHeight);
                 fillPath.lineTo(centerX, totalY);
             } else {
                 linePath.lineTo(centerX, totalY);
                 fillPath.lineTo(centerX, totalY);
             }
+            lastX = centerX;
+            lastY = totalY;
 
-            // Draw point
-            canvas.drawCircle(centerX, totalY, dpToPx(4), pointPaint);
+            // Day label (highlight last day CN with primary pill)
+            labelPaint.setTextAlign(Paint.Align.CENTER);
+            if (i == n - 1) {
+                RectF pillRect = new RectF(centerX - dpToPx(14), height - dpToPx(22), centerX + dpToPx(14), height - dpToPx(6));
+                canvas.drawRoundRect(pillRect, dpToPx(8), dpToPx(8), pointPaint);
+                Paint pillTextPaint = new Paint(labelPaint);
+                pillTextPaint.setColor(Color.WHITE);
+                pillTextPaint.setFakeBoldText(true);
+                canvas.drawText(m.getDayLabel(), centerX, height - dpToPx(10), pillTextPaint);
+            } else {
+                canvas.drawText(m.getDayLabel(), centerX, height - dpToPx(10), labelPaint);
+            }
         }
 
-        // Close fill path
-        fillPath.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
+        fillPath.lineTo(lastX, paddingTop + chartHeight);
         fillPath.close();
 
-        // Gradient for fill
         Shader gradient = new LinearGradient(0, paddingTop, 0, paddingTop + chartHeight,
-                Color.parseColor("#334F46E5"), Color.parseColor("#054F46E5"), Shader.TileMode.CLAMP);
+                Color.parseColor("#260284C7"), Color.parseColor("#000284C7"), Shader.TileMode.CLAMP);
         lineFillPaint.setShader(gradient);
         canvas.drawPath(fillPath, lineFillPaint);
         canvas.drawPath(linePath, linePaint);
+
+        // White-bordered end dot
+        Paint haloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        haloPaint.setColor(Color.WHITE);
+        canvas.drawCircle(lastX, lastY, dpToPx(6), haloPaint);
+        canvas.drawCircle(lastX, lastY, dpToPx(4.2f), pointPaint);
     }
 
     private float dpToPx(float dp) {

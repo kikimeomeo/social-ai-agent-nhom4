@@ -7,265 +7,209 @@
     android:background="@drawable/bg_badge_rounded"
     android:backgroundTint="@color/card_bg"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="18dp">
 
     <!-- Handle Bar -->
     <View
-        android:layout_width="40dp"
+        android:layout_width="36dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/bg_badge_rounded"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_soft_pill"
         android:backgroundTint="@color/stepper_inactive" />
 
-    <!-- Dialog Header -->
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- Header Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Chi Tiết Bình Luận &amp; Phản Hồi"
-        android:textColor="@color/text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tvDialogAuthorName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Trả lời Minh Anh" />
+
+        <TextView
+            android:id="@+id/tvDialogCategoryBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_soft_pill"
+            android:backgroundTint="@color/status_green_bg"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="Khen ngợi"
+            android:textColor="@color/status_green"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tvDialogPostTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="@color/text_muted"
-        android:textSize="12sp"
+        android:textSize="11sp"
         tools:text="Về bài: 5 Xu Hướng AI 2026..." />
 
-    <!-- Comment Detail Box -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Original Comment Box (borderless soft fill) -->
+    <TextView
+        android:id="@+id/tvDialogCommentText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        app:cardBackgroundColor="@color/bg_main"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="0dp"
-        app:strokeColor="@color/card_stroke"
-        app:strokeWidth="1dp">
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_soft_input"
+        android:lineSpacingExtra="2dp"
+        android:padding="12dp"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"
+        tools:text="App có hỗ trợ tự nhập Gemini API Key cá nhân không bạn?" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tvDialogAuthorName"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    tools:text="Trần Minh Khoa" />
-
-                <TextView
-                    android:id="@+id/tvDialogCategoryBadge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_badge_rounded"
-                    android:backgroundTint="@color/status_green_bg"
-                    android:paddingStart="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="2dp"
-                    android:text="Khen ngợi"
-                    android:textColor="@color/status_green"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvDialogCommentText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:lineSpacingExtra="2dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp"
-                tools:text="Bài viết rất sâu sắc và thực tế anh ơi! Mong anh ra thêm series phân tích kiến trúc On-Device AI ạ." />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- AI Safety Alert Banner (Visible only for Negative/Spam) -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- AI Safety Alert Banner (borderless soft red fill) -->
+    <LinearLayout
         android:id="@+id/cardSafetyAlert"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        app:cardBackgroundColor="@color/status_red_bg"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="0dp"
-        app:strokeColor="@color/status_red"
-        app:strokeWidth="1dp">
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_soft_input"
+        android:backgroundTint="@color/status_red_bg"
+        android:orientation="vertical"
+        android:padding="12dp">
 
-        <LinearLayout
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cảnh báo an toàn AI"
+            android:textColor="@color/status_red"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvSafetyAlertDetail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
+            android:layout_marginTop="3dp"
+            android:lineSpacingExtra="2dp"
+            android:text="Bình luận tiêu cực/spam. Auto-reply đã khóa để duyệt tay."
+            android:textColor="@color/status_red"
+            android:textSize="11sp" />
+    </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_alert_triangle" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="CẢNH BÁO AN TOÀN AI"
-                    android:textColor="@color/status_red"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvSafetyAlertDetail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:lineSpacingExtra="2dp"
-                android:text="Bình luận này có dấu hiệu tiêu cực hoặc rủi ro uy tín thương hiệu. Tính năng tự động gợi ý đã bị khóa. Vui lòng tự nhập phản hồi cẩn trọng."
-                android:textColor="@color/status_red"
-                android:textSize="12sp" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- AI Suggested Reply Container (Visible only when safe) -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- AI Suggested Reply Container (borderless soft blue fill) -->
+    <LinearLayout
         android:id="@+id/cardAiSuggestedReply"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        app:cardBackgroundColor="@color/primary_light"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="0dp"
-        app:strokeColor="@color/primary"
-        app:strokeWidth="1dp">
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_soft_input"
+        android:orientation="vertical"
+        android:padding="12dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_sparkles" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:text="Gợi ý phản hồi từ AI:"
-                    android:textColor="@color/primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnApplySuggestion"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:padding="0dp"
-                    android:text="Dùng gợi ý này"
-                    android:textColor="@color/primary"
-                    android:textSize="11sp" />
-            </LinearLayout>
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/tvAiSuggestedText"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:lineSpacingExtra="2dp"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp"
-                tools:text="Dạ cảm ơn Khoa nhiều nhé! Mình đang hoàn thiện demo và sẽ chia sẻ chi tiết..." />
+                android:layout_weight="1"
+                android:text="Gợi ý từ AI:"
+                android:textColor="@color/primary"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApplySuggestion"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="26dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:paddingHorizontal="6dp"
+                android:text="Dùng gợi ý"
+                android:textColor="@color/primary_dark"
+                android:textSize="11sp"
+                android:textStyle="bold" />
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/tvAiSuggestedText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            tools:text="Cảm ơn bạn đã góp ý!" />
+    </LinearLayout>
 
     <!-- Reply Input Box -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:text="Câu trả lời của bạn:"
-        android:textColor="@color/text_primary"
-        android:textSize="13sp"
-        android:textStyle="bold" />
-
     <EditText
         android:id="@+id/etReplyInput"
         android:layout_width="match_parent"
-        android:layout_height="90dp"
-        android:layout_marginTop="6dp"
-        android:background="@drawable/bg_badge_rounded"
+        android:layout_height="76dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_soft_input"
         android:backgroundTint="@color/bg_main"
         android:gravity="top|start"
         android:hint="Nhập nội dung phản hồi..."
         android:padding="12dp"
         android:textColor="@color/text_primary"
-        android:textSize="13sp" />
+        android:textColorHint="@color/text_muted"
+        android:textSize="12sp" />
 
-    <!-- Action Buttons -->
+    <!-- Action Pill Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:orientation="horizontal">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDismissDialog"
-            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="40dp"
             android:layout_marginEnd="6dp"
             android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minHeight="0dp"
             android:text="Đóng"
-            android:textColor="@color/text_secondary"
-            app:cornerRadius="10dp" />
+            android:textColor="@color/primary_dark"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/bg_soft_fill"
+            app:cornerRadius="20dp"
+            app:strokeWidth="0dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSendReply"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="40dp"
             android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:text="Gửi phản hồi"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minHeight="0dp"
+            android:text="Gửi trả lời"
             android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
             app:backgroundTint="@color/primary"
-            app:cornerRadius="10dp"
-            app:icon="@drawable/ic_send"
-            app:iconGravity="textStart"
-            app:iconTint="@color/white" />
+            app:cornerRadius="20dp" />
     </LinearLayout>
 </LinearLayout>
 

@@ -161,17 +161,30 @@ public class InboxFragment extends Fragment {
     }
 
     private void setupFilters() {
-        binding.chipGroupFilter.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (checkedIds.contains(R.id.chipFilterFacebook)) {
-                adapter.applyFilter("FACEBOOK");
-            } else if (checkedIds.contains(R.id.chipFilterLinkedIn)) {
-                adapter.applyFilter("LINKEDIN");
-            } else if (checkedIds.contains(R.id.chipFilterThreads)) { // Bổ sung xử lý lọc Threads
-                adapter.applyFilter("THREADS");
-            } else {
-                adapter.applyFilter("ALL");
-            }
-        });
+        binding.tabFilterAll.setOnClickListener(v -> selectFilterTab("ALL"));
+        binding.tabFilterFacebook.setOnClickListener(v -> selectFilterTab("FACEBOOK"));
+        binding.tabFilterThreads.setOnClickListener(v -> selectFilterTab("THREADS"));
+    }
+
+    private void selectFilterTab(String filter) {
+        adapter.applyFilter(filter);
+        int activeColor = getResources().getColor(R.color.primary);
+        int textInactive = getResources().getColor(R.color.text_muted);
+        applyFilterPill(binding.tabFilterAll, "ALL".equals(filter), activeColor, textInactive);
+        applyFilterPill(binding.tabFilterFacebook, "FACEBOOK".equals(filter), activeColor, textInactive);
+        applyFilterPill(binding.tabFilterThreads, "THREADS".equals(filter), activeColor, textInactive);
+    }
+
+    private void applyFilterPill(android.widget.TextView tab, boolean active, int activeColor, int textInactive) {
+        if (active) {
+            tab.setBackgroundResource(R.drawable.bg_soft_pill);
+            tab.setBackgroundTintList(android.content.res.ColorStateList.valueOf(activeColor));
+            tab.setTextColor(android.graphics.Color.WHITE);
+        } else {
+            tab.setBackground(null);
+            tab.setBackgroundTintList(null);
+            tab.setTextColor(textInactive);
+        }
     }
 
     private void loadComments() {

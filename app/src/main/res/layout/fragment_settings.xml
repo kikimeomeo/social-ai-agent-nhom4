@@ -11,81 +11,71 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card_bg"
-        android:elevation="2dp"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingHorizontal="18dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Cài Đặt &amp; Quản Trị"
+            android:text="Cài đặt"
             android:textColor="@color/text_primary"
-            android:textSize="20sp"
+            android:textSize="19sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Quản lý kênh, API Key LLM (BYOK) &amp; Chi phí"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+        <View
+            android:layout_width="60dp"
+            android:layout_height="2.5dp"
+            android:layout_marginTop="3dp"
+            android:background="@drawable/bg_soft_underline" />
     </LinearLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:padding="16dp">
+        android:paddingHorizontal="18dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="40dp">
+            android:paddingBottom="24dp">
 
-            <!-- Card 1: Channel Connection Management -->
+            <!-- Card 1: Quản lý tài khoản MXH -->
             <com.google.android.material.card.MaterialCardView
+                style="@style/SocialCard"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                android:layout_height="wrap_content">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="12dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Quản Lý Tài Khoản Mạng Xã Hội"
+                        android:text="Quản lý tài khoản MXH"
                         android:textColor="@color/text_primary"
-                        android:textSize="15sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <!-- Facebook Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="8dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
-
-                        <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
-                            android:src="@drawable/ic_facebook" />
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
@@ -94,98 +84,59 @@
                                 android:layout_height="wrap_content"
                                 android:text="Facebook Page"
                                 android:textColor="@color/text_primary"
-                                android:textSize="13sp"
+                                android:textSize="12sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tvSettingsFbDesc"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI Tech Vietnam (@aitechvn)"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="Chưa xác minh OAuth"
+                                android:textColor="@color/text_muted"
+                                android:textSize="10sp" />
 
                             <TextView
                                 android:id="@+id/tvSettingsFbCapabilities"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="OAuth: tạm khóa • Đăng bài: chưa xác minh"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
+                                android:visibility="gone" />
                         </LinearLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_soft_pill"
+                            android:backgroundTint="@color/bg_soft_fill"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="Tạm khóa"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchFbConnection"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="true" />
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:visibility="gone" />
                     </LinearLayout>
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="10dp"
-                        android:layout_marginBottom="10dp"
-                        android:background="@color/divider" />
-
-                    <!-- LinkedIn Row -->
+                    <!-- LinkedIn Row (hidden for FB & Threads scope, IDs kept for binding compatibility) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
-                            android:src="@drawable/ic_linkedin" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="LinkedIn Member"
-                                android:textColor="@color/text_primary"
-                                android:textSize="13sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tvSettingsLiDesc"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Nguyen Van A (Tech Lead)"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/tvSettingsLiCapabilities"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="OAuth: tạm khóa • Đăng bài: chưa xác minh"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/switchLiConnection"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="true" />
+                        android:visibility="gone">
+                        <TextView android:id="@+id/tvSettingsLiDesc" android:layout_width="0dp" android:layout_height="0dp" />
+                        <TextView android:id="@+id/tvSettingsLiCapabilities" android:layout_width="0dp" android:layout_height="0dp" />
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switchLiConnection" android:layout_width="0dp" android:layout_height="0dp" />
                     </LinearLayout>
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:layout_marginTop="10dp"
-                        android:layout_marginBottom="10dp"
+                        android:layout_marginVertical="8dp"
                         android:background="@color/divider" />
 
                     <!-- Threads Row -->
@@ -196,158 +147,113 @@
                         android:orientation="horizontal">
 
                         <TextView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
-                            android:gravity="center"
-                            android:text="@"
-                            android:textColor="@color/text_primary"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
                             android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:text="Threads Token"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Tài khoản Threads (Threads API)"
-                                android:textColor="@color/text_primary"
-                                android:textSize="13sp"
-                                android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvSettingsThreadsDesc"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Chưa cấu hình"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
 
-                            <TextView
-                                android:id="@+id/tvSettingsThreadsDesc"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Chưa cấu hình Token"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/tvSettingsThreadsCapabilities"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="Lưu/xóa token: có • Đăng bài: chưa xác minh"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-                        </LinearLayout>
+                        <TextView
+                            android:id="@+id/tvSettingsThreadsCapabilities"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
                     </LinearLayout>
 
-                    <!-- Threads Token Input & Save Button -->
+                    <EditText
+                        android:id="@+id/etSettingsThreadsToken"
+                        android:layout_width="match_parent"
+                        android:layout_height="36dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_soft_input"
+                        android:hint="Dán Threads Access Token..."
+                        android:inputType="textPassword"
+                        android:paddingHorizontal="12dp"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_muted"
+                        android:textSize="11sp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:orientation="vertical">
-
-                        <EditText
-                            android:id="@+id/etSettingsThreadsToken"
-                            android:layout_width="match_parent"
-                            android:layout_height="44dp"
-                            android:background="@drawable/bg_badge_rounded"
-                            android:backgroundTint="@color/bg_main"
-                            android:hint="Dán Threads User Access Token vào đây"
-                            android:inputType="textPassword"
-                            android:padding="10dp"
-                            android:textColor="@color/text_primary"
-                            android:textSize="12sp" />
+                        android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnSaveThreadsToken"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="42dp"
-                            android:layout_marginTop="6dp"
-                            android:text="Lưu Token Threads"
-                            android:textColor="@color/primary"
-                            android:textSize="12sp"
-                            app:cornerRadius="8dp" />
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Lưu Token"
+                            android:textColor="@color/white"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/primary"
+                            app:cornerRadius="18dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnDisconnectThreads"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="42dp"
-                            android:layout_marginTop="8dp"
-                            android:text="Ngắt kết nối Threads"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="12sp"
-                            app:cornerRadius="8dp" />
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Ngắt kết nối"
+                            android:textColor="@color/primary_dark"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/bg_soft_fill"
+                            app:cornerRadius="18dp"
+                            app:strokeWidth="0dp" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Card 2: BYOK & LLM Configuration -->
+            <!-- Card 2: Chế độ Demo & BYOK API Key -->
             <com.google.android.material.card.MaterialCardView
+                style="@style/SocialCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                android:layout_marginTop="10dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="12dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Cấu Hình LLM AI (Bring Your Own Key - F8)"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="API Key của Trí tuệ Nhân tạo (Google Gemini / OpenAI) dùng để AI Agent suy nghĩ, viết bài, sinh dàn ý và phân loại comment."
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-
-                    <!-- Demo Mode Switch -->
+                    <!-- Demo Mode Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:background="@drawable/bg_badge_rounded"
-                        android:backgroundTint="@color/primary_light"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="12dp">
+                        android:orientation="horizontal">
 
-                        <LinearLayout
+                        <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Chế độ Demo (Không cần key)"
-                                android:textColor="@color/primary"
-                                android:textSize="13sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="Giả lập streaming AI và dữ liệu mẫu thực tế, test mượt mà ngay lập tức."
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-                        </LinearLayout>
+                            android:text="Chế độ Demo"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchDemoMode"
@@ -356,277 +262,206 @@
                             android:checked="true" />
                     </LinearLayout>
 
-                    <!-- Provider Selection -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="Chọn nhà cung cấp LLM:"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
+                    <!-- Provider Selection Segmented Pill Bar (NO radio dots, matching Phone 5!) -->
                     <RadioGroup
                         android:id="@+id/rgProvider"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp">
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_soft_input"
+                        android:orientation="horizontal"
+                        android:padding="3dp">
 
                         <RadioButton
                             android:id="@+id/rbGemini"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_width="0dp"
+                            android:layout_height="30dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_provider_tab_selector"
+                            android:button="@null"
                             android:checked="true"
-                            android:text="Google Gemini (Gemini 3.1 Flash Lite • 500 lượt/ngày)"
-                            android:textSize="13sp" />
+                            android:gravity="center"
+                            android:text="Gemini"
+                            android:textColor="@color/chip_text_selector"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
 
                         <RadioButton
                             android:id="@+id/rbOpenAI"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="OpenAI (GPT-4o / GPT-4o-mini)"
-                            android:textSize="13sp" />
+                            android:layout_width="0dp"
+                            android:layout_height="30dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_provider_tab_selector"
+                            android:button="@null"
+                            android:gravity="center"
+                            android:text="OpenAI"
+                            android:textColor="@color/chip_text_selector"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
 
                         <RadioButton
                             android:id="@+id/rbOpenRouter"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="OpenRouter (Claude 3.5 / Llama 3)"
-                            android:textSize="13sp" />
+                            android:layout_width="0dp"
+                            android:layout_height="30dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_provider_tab_selector"
+                            android:button="@null"
+                            android:gravity="center"
+                            android:text="OpenRouter"
+                            android:textColor="@color/chip_text_selector"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
                     </RadioGroup>
-
-                    <!-- API Key Input -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="API Key bí mật (Lưu mã hóa cục bộ):"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilApiKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        app:boxBackgroundColor="@color/bg_main"
-                        app:boxCornerRadiusBottomEnd="10dp"
-                        app:boxCornerRadiusBottomStart="10dp"
-                        app:boxCornerRadiusTopEnd="10dp"
-                        app:boxCornerRadiusTopStart="10dp"
-                        app:endIconMode="password_toggle">
+                        app:boxBackgroundColor="@color/bg_soft_fill"
+                        app:boxBackgroundMode="filled"
+                        app:boxCornerRadiusBottomEnd="14dp"
+                        app:boxCornerRadiusBottomStart="14dp"
+                        app:boxCornerRadiusTopEnd="14dp"
+                        app:boxCornerRadiusTopStart="14dp"
+                        app:boxStrokeWidth="0dp"
+                        app:boxStrokeWidthFocused="0dp"
+                        app:endIconMode="password_toggle"
+                        app:hintEnabled="false">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etApiKey"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="36dp"
                             android:hint="@string/api_key_hint"
                             android:inputType="textPassword"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="6dp"
                             android:textColor="@color/text_primary"
-                            android:textSize="13sp" />
+                            android:textColorHint="@color/text_muted"
+                            android:textSize="11sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Link to Get Free Gemini API Key -->
                     <TextView
                         android:id="@+id/tvGetApiKeyLink"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
+                        android:layout_marginTop="3dp"
                         android:clickable="true"
+                        android:ellipsize="end"
                         android:focusable="true"
-                        android:foreground="?attr/selectableItemBackground"
-                        android:paddingVertical="4dp"
-                        android:text="🔗 Chưa có Key? Lấy API Key miễn phí tại Google AI Studio ↗"
+                        android:maxLines="1"
+                        android:text="Lấy API Key miễn phí tại Google AI Studio ↗"
                         android:textColor="@color/primary"
-                        android:textSize="12sp"
-                        android:textStyle="italic" />
+                        android:textSize="10sp" />
 
-                    <!-- Status Display for API Key Validation -->
                     <TextView
                         android:id="@+id/tvApiKeyStatus"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:background="@drawable/bg_badge_rounded"
-                        android:backgroundTint="@color/bg_main"
-                        android:padding="10dp"
-                        android:text="Trạng thái Key: Chưa kết nối API Key"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_soft_input"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="5dp"
+                        android:text="Trạng thái Key: Chưa kết nối"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
+                        android:textSize="10sp"
                         android:visibility="gone" />
 
                     <!-- Action Buttons: Validate & Save -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="6dp"
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnValidateApiKey"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="36dp"
                             android:layout_marginEnd="6dp"
                             android:layout_weight="1"
-                            android:text="🔍 Kiểm Tra Key"
-                            android:textColor="@color/primary"
-                            android:textSize="12sp"
-                            app:cornerRadius="10dp"
-                            app:strokeColor="@color/primary" />
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Kiểm tra Key"
+                            android:textColor="@color/primary_dark"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/bg_soft_fill"
+                            app:cornerRadius="18dp"
+                            app:strokeWidth="0dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnSaveApiKey"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="36dp"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
-                            android:text="💾 Lưu Cấu Hình"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Lưu API Key"
                             android:textColor="@color/white"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
                             app:backgroundTint="@color/primary"
-                            app:cornerRadius="10dp" />
+                            app:cornerRadius="18dp" />
                     </LinearLayout>
 
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="10dp"
+                        android:background="@color/divider" />
 
-            <!-- Card 3: Token Usage & Cost Monitor -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Giám Sát Chi Phí &amp; Token Tiêu Thụ"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
+                    <!-- Token & Cost footer row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <!-- Metric 1: Tokens -->
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/tvTotalTokens"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="14,240"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=" tokens • "
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvTotalCost"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
                             android:layout_weight="1"
-                            android:background="@drawable/bg_badge_rounded"
-                            android:backgroundTint="@color/bg_main"
-                            android:orientation="vertical"
-                            android:padding="12dp">
+                            android:text="$0.057"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Tổng Token Đã Dùng"
-                                android:textColor="@color/text_muted"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/tvTotalTokens"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="14,240"
-                                android:textColor="@color/primary"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <!-- Metric 2: Cost -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_badge_rounded"
-                            android:backgroundTint="@color/bg_main"
-                            android:orientation="vertical"
-                            android:padding="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Chi Phí Ước Tính"
-                                android:textColor="@color/text_muted"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/tvTotalCost"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="$0.057 USD"
-                                android:textColor="@color/status_green"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnResetTokens"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:paddingHorizontal="8dp"
+                            android:text="Đặt lại"
+                            android:textColor="@color/status_red"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnResetTokens"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end"
-                        android:layout_marginTop="8dp"
-                        android:text="Đặt lại thống kê"
-                        android:textColor="@color/status_red"
-                        android:textSize="11sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card 4: Project Info -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Thông Tin Đồ Án"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:lineSpacingExtra="2dp"
-                        android:text="SocialAI v1.0 • Đồ án môn Lập trình thiết bị di động (LTTBDD)\nGiảng viên hướng dẫn: Thầy Hải Phạm\nKiến trúc: Java Native (Android Studio) • MVVM • AI Agent Orchestrator"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

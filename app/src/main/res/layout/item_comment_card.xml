@@ -1,174 +1,116 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
-    app:cardBackgroundColor="@color/card_bg"
-    app:cardCornerRadius="14dp"
-    app:cardElevation="1dp"
-    app:strokeColor="@color/card_stroke"
-    app:strokeWidth="1dp">
+    android:background="?attr/selectableItemBackground"
+    android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp">
 
-        <!-- Top Header: Platform + Post Context + AI Category Badge -->
-        <RelativeLayout
+        <!-- Row 1: Author + Platform Icon + Category Badge -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <LinearLayout
+            <ImageView
+                android:id="@+id/ivCommentPlatform"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:src="@drawable/ic_facebook" />
+
+            <TextView
+                android:id="@+id/tvAuthorName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginStart="5dp"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="Minh Anh" />
 
-                <ImageView
-                    android:id="@+id/ivCommentPlatform"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_facebook" />
-
-                <TextView
-                    android:id="@+id/tvPostContextTitle"
-                    android:layout_width="200dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/text_muted"
-                    android:textSize="11sp"
-                    tools:text="Bài: 5 Xu Hướng AI 2026..." />
-            </LinearLayout>
+            <TextView
+                android:id="@+id/tvCommentTime"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                tools:text="• 5 phút trước" />
 
             <TextView
                 android:id="@+id/tvCategoryBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="@drawable/bg_badge_rounded"
+                android:background="@drawable/bg_soft_pill"
                 android:backgroundTint="@color/status_green_bg"
-                android:paddingStart="8dp"
-                android:paddingTop="3dp"
-                android:paddingEnd="8dp"
-                android:paddingBottom="3dp"
+                android:paddingHorizontal="7dp"
+                android:paddingVertical="2dp"
                 android:text="Khen ngợi"
                 android:textColor="@color/status_green"
                 android:textSize="10sp"
                 android:textStyle="bold" />
-        </RelativeLayout>
+        </LinearLayout>
 
-        <!-- User Info Row -->
+        <!-- Row 2: Comment Content -->
+        <TextView
+            android:id="@+id/tvCommentContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            tools:text="App có hỗ trợ tự nhập Gemini API Key cá nhân không bạn?" />
+
+        <!-- Row 3: Status + Tap hint -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="5dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
-            <!-- Avatar Initial Circle -->
-            <TextView
-                android:id="@+id/tvAuthorAvatar"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="@drawable/bg_badge_rounded"
-                android:backgroundTint="@color/primary_light"
-                android:gravity="center"
-                android:textColor="@color/primary"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                tools:text="K" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvAuthorName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    tools:text="Trần Minh Khoa" />
-
-                <TextView
-                    android:id="@+id/tvCommentTime"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_muted"
-                    android:textSize="11sp"
-                    tools:text="15 phút trước" />
-            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvReplyStatusBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_badge_rounded"
-                android:backgroundTint="@color/status_amber_bg"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
-                android:text="Chờ trả lời"
-                android:textColor="@color/status_amber"
+                android:text="Chưa trả lời"
+                android:textColor="@color/primary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" • Chạm để trả lời"
+                android:textColor="@color/text_muted"
                 android:textSize="10sp" />
         </LinearLayout>
 
-        <!-- Comment Content -->
-        <TextView
-            android:id="@+id/tvCommentContent"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:lineSpacingExtra="2dp"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp"
-            tools:text="Bài viết rất sâu sắc và thực tế anh ơi! Mong anh ra thêm series phân tích kiến trúc On-Device AI ạ." />
-
-        <!-- Warning Alert Banner if flagged -->
-        <LinearLayout
-            android:id="@+id/layoutAlertWarning"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_badge_rounded"
-            android:backgroundTint="@color/status_red_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:visibility="gone">
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_alert_triangle" />
-
-            <TextView
-                android:id="@+id/tvAlertWarningText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Phát hiện tiêu cực • Khóa trả lời tự động"
-                android:textColor="@color/status_red"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+        <!-- Hidden legacy bound views preserved for CommentAdapter -->
+        <TextView android:id="@+id/tvPostContextTitle" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+        <TextView android:id="@+id/tvAuthorAvatar" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+        <LinearLayout android:id="@+id/layoutAlertWarning" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
+            <TextView android:id="@+id/tvAlertWarningText" android:layout_width="0dp" android:layout_height="0dp" />
         </LinearLayout>
-
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+</LinearLayout>
 

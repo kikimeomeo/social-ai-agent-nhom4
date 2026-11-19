@@ -45,7 +45,9 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
 
         for (CommentItem item : allComments) {
             if ("ALL".equalsIgnoreCase(filter)) {
-                displayedComments.add(item);
+                if (item.getPlatform() != SocialPlatform.LINKEDIN) {
+                    displayedComments.add(item);
+                }
             } else if ("FACEBOOK".equalsIgnoreCase(filter) && item.getPlatform() == SocialPlatform.FACEBOOK) {
                 displayedComments.add(item);
             } else if ("LINKEDIN".equalsIgnoreCase(filter) && item.getPlatform() == SocialPlatform.LINKEDIN) {
@@ -98,35 +100,35 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
             binding.tvCommentTime.setText(item.getTimeAgo());
             binding.tvCommentContent.setText(item.getContent());
 
-            // AI Category Badge styling
+            // AI Category Badge styling (rounded pill)
             String cat = item.getCategory();
+            binding.tvCategoryBadge.setBackgroundResource(R.drawable.bg_soft_pill);
             if (CommentItem.CATEGORY_PRAISE.equalsIgnoreCase(cat)) {
                 binding.tvCategoryBadge.setText("Khen ngợi");
-                binding.tvCategoryBadge.setTextColor(Color.parseColor("#10B981"));
-                binding.tvCategoryBadge.setBackgroundColor(Color.parseColor("#ECFDF5"));
+                binding.tvCategoryBadge.setTextColor(Color.parseColor("#0D9488"));
+                binding.tvCategoryBadge.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#CCFBF1")));
             } else if (CommentItem.CATEGORY_QUESTION.equalsIgnoreCase(cat)) {
                 binding.tvCategoryBadge.setText("Câu hỏi");
-                binding.tvCategoryBadge.setTextColor(Color.parseColor("#2563EB"));
-                binding.tvCategoryBadge.setBackgroundColor(Color.parseColor("#EFF6FF"));
+                binding.tvCategoryBadge.setTextColor(Color.parseColor("#0369A1"));
+                binding.tvCategoryBadge.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#EBF7FD")));
             } else if (CommentItem.CATEGORY_NEGATIVE.equalsIgnoreCase(cat)) {
-                binding.tvCategoryBadge.setText("Tiêu cực / Rủi ro");
-                binding.tvCategoryBadge.setTextColor(Color.parseColor("#EF4444"));
-                binding.tvCategoryBadge.setBackgroundColor(Color.parseColor("#FEF2F2"));
+                binding.tvCategoryBadge.setText("Tiêu cực");
+                binding.tvCategoryBadge.setTextColor(Color.parseColor("#E11D48"));
+                binding.tvCategoryBadge.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FFE4E6")));
             } else {
                 binding.tvCategoryBadge.setText("Spam");
-                binding.tvCategoryBadge.setTextColor(Color.parseColor("#64748B"));
-                binding.tvCategoryBadge.setBackgroundColor(Color.parseColor("#F1F5F9"));
+                binding.tvCategoryBadge.setTextColor(Color.parseColor("#78716C"));
+                binding.tvCategoryBadge.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F3EFE7")));
             }
 
-            // Reply status
+            // Reply status (clean text color without yellow highlight box)
+            binding.tvReplyStatusBadge.setBackground(null);
             if (item.isAnswered()) {
                 binding.tvReplyStatusBadge.setText("Đã trả lời");
-                binding.tvReplyStatusBadge.setTextColor(Color.parseColor("#10B981"));
-                binding.tvReplyStatusBadge.setBackgroundColor(Color.parseColor("#ECFDF5"));
+                binding.tvReplyStatusBadge.setTextColor(Color.parseColor("#0D9488"));
             } else {
                 binding.tvReplyStatusBadge.setText("Chờ xử lý");
-                binding.tvReplyStatusBadge.setTextColor(Color.parseColor("#F59E0B"));
-                binding.tvReplyStatusBadge.setBackgroundColor(Color.parseColor("#FFFBEB"));
+                binding.tvReplyStatusBadge.setTextColor(Color.parseColor("#D97706"));
             }
 
             // Negative warning banner

@@ -9,22 +9,24 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true"
         android:clipToPadding="false"
-        android:paddingBottom="80dp">
+        android:fillViewport="true"
+        android:paddingBottom="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
 
             <!-- App Header -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -35,47 +37,241 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="SocialAI Agent"
-                        android:textColor="@color/text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:text="Xin chào,"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Quản lý kênh Facebook Page &amp; LinkedIn"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp" />
+                        android:text="SocialAI Studio"
+                        android:textColor="@color/primary_dark"
+                        android:textSize="19sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvHomeModeBadge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_badge_rounded"
-                    android:backgroundTint="@color/status_green_bg"
-                    android:paddingStart="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="5dp"
-                    android:text="● Demo Mode"
-                    android:textColor="@color/status_green"
-                    android:textSize="11sp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_soft_pill"
+                    android:backgroundTint="@color/primary_light"
+                    android:paddingHorizontal="9dp"
+                    android:paddingVertical="3dp"
+                    android:text="● Demo"
+                    android:textColor="@color/primary_dark"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnHomeBell"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    app:cardBackgroundColor="@color/card_bg"
+                    app:cardCornerRadius="17dp"
+                    app:cardElevation="2dp"
+                    app:strokeWidth="0dp">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_bell"
+                        app:tint="@color/text_primary" />
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
-            <!-- Section 1: Connected Channels Cards -->
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- Hero Ocean Gradient Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="10dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="KÊNH ĐANG HOẠT ĐỘNG"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:letterSpacing="0.05" />
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_hero_ocean"
+                android:elevation="4dp"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:letterSpacing="0.05"
+                        android:text="TƯƠNG TÁC TUẦN NÀY"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_soft_pill"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="2dp"
+                        android:text="↑ Tuần này"
+                        android:textColor="@color/primary_dark"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="bottom"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvWeeklyEngagement"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1,845"
+                        android:textColor="@color/white"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginBottom="3dp"
+                        android:text="lượt tương tác  •  "
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvTotalPostsCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="3dp"
+                        android:text="3"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginBottom="3dp"
+                        android:text="bài viết"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.tuankiet.myapplication.ui.custom.HeroSparklineView
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:layout_marginTop="6dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="T2"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="T3"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="T4"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="T5"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="T6"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="T7"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_soft_pill"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="2dp"
+                        android:text="CN"
+                        android:textColor="@color/primary_dark"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Section 1: Kênh của tôi -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="Kênh của tôi"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvManageChannels"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="Quản lý"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -84,278 +280,352 @@
 
                 <!-- Facebook Page Card -->
                 <com.google.android.material.card.MaterialCardView
+                    style="@style/SocialCard"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
-                    android:layout_weight="1"
-                    app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/card_stroke"
-                    app:strokeWidth="1dp">
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
                         android:padding="12dp">
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                        <ImageView
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:src="@drawable/ic_facebook" />
 
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@drawable/ic_facebook" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvFbPageName"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="AI Tech VN"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tvFbStatus"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:gravity="end"
+                                android:layout_marginTop="2dp"
                                 android:text="● Đã kết nối"
                                 android:textColor="@color/status_green"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvFbFollowers"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:visibility="gone" />
                         </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvFbPageName"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:text="AI Tech Vietnam"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvFbFollowers"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="12,450 người theo dõi"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- LinkedIn Card -->
+                <!-- Threads Card (keeps tvLi* IDs for compatibility) -->
                 <com.google.android.material.card.MaterialCardView
+                    style="@style/SocialCard"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/card_stroke"
-                    app:strokeWidth="1dp">
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
                         android:padding="12dp">
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                        <ImageView
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:src="@drawable/ic_threads" />
 
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@drawable/ic_linkedin" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvLiProfileName"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="\@aitech.vn"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tvLiStatus"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:gravity="end"
+                                android:layout_marginTop="2dp"
                                 android:text="● Đã kết nối"
                                 android:textColor="@color/status_green"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvLiFollowers"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:visibility="gone" />
                         </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvLiProfileName"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:text="Nguyen Van A"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvLiFollowers"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="8,920 kết nối"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
-            <!-- Section 2: Quick KPIs -->
+            <!-- Section 2: Quick Access 4 Tiles -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="10dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="CHỈ SỐ TUẦN NÀY"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:letterSpacing="0.05" />
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"
+                android:text="Truy cập nhanh"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <!-- KPI 1 -->
-                <com.google.android.material.card.MaterialCardView
+                <!-- 1. Viết bài -->
+                <LinearLayout
+                    android:id="@+id/qaCreate"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
+                    android:layout_marginEnd="5dp"
                     android:layout_weight="1"
-                    app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/card_stroke"
-                    app:strokeWidth="1dp">
+                    android:gravity="center"
+                    android:orientation="vertical">
 
-                    <LinearLayout
+                    <FrameLayout
                         android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_qa_blue">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_edit_pen"
+                            app:tint="@color/primary_dark" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:layout_marginTop="6dp"
+                        android:text="Viết bài"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/tvTotalPostsCount"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="3"
-                            android:textColor="@color/primary"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Bài đã tạo"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- KPI 2 -->
-                <com.google.android.material.card.MaterialCardView
+                <!-- 2. Hộp thư -->
+                <LinearLayout
+                    android:id="@+id/qaInbox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"
+                    android:layout_marginHorizontal="5dp"
                     android:layout_weight="1"
-                    app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/card_stroke"
-                    app:strokeWidth="1dp">
+                    android:gravity="center"
+                    android:orientation="vertical">
 
-                    <LinearLayout
+                    <FrameLayout
                         android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_qa_teal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_nav_inbox"
+                            app:tint="@color/status_green" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:layout_marginTop="6dp"
+                        android:text="Hộp thư"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/tvWeeklyEngagement"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="1,845"
-                            android:textColor="@color/status_blue"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Tương tác"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- KPI 3 -->
-                <com.google.android.material.card.MaterialCardView
+                <!-- 3. Thống kê -->
+                <LinearLayout
+                    android:id="@+id/qaAnalytics"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginHorizontal="5dp"
                     android:layout_weight="1"
-                    app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/card_stroke"
-                    app:strokeWidth="1dp">
+                    android:gravity="center"
+                    android:orientation="vertical">
 
-                    <LinearLayout
+                    <FrameLayout
                         android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_qa_amber">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_nav_analytics"
+                            app:tint="@color/status_amber" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:layout_marginTop="6dp"
+                        android:text="Thống kê"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/tvPendingComments"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="2"
-                            android:textColor="@color/status_amber"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
+                <!-- 4. API Key -->
+                <LinearLayout
+                    android:id="@+id/qaSettings"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Cần xử lý"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_qa_stone">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_key"
+                            app:tint="@color/text_primary" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="API Key"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
+
+            <!-- Soft Reminder Banner: Pending Comments -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/bannerPendingComments"
+                style="@style/SocialCard.Flat"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="11dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvPendingComments"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="2"
+                                android:textColor="@color/primary_dark"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:text="bình luận cần xử lý"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Chạm để mở Hộp thư Inbox"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_badge_rounded"
+                        android:backgroundTint="@color/primary"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="7dp"
+                        android:text="Xem ngay"
+                        android:textColor="@color/white"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Section 3: Recent Posts -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="12dp">
+                android:layout_marginTop="22dp"
+                android:layout_marginBottom="10dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentStart="true"
                     android:layout_centerVertical="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="BÀI VIẾT GẦN ĐÂY"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
-                    android:letterSpacing="0.05" />
+                    android:text="Bài viết gần đây"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvViewAll"
@@ -369,30 +639,28 @@
                     android:textStyle="bold" />
             </RelativeLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvRecentPosts"
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SocialCard"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                tools:itemCount="3"
-                tools:listitem="@layout/item_post_card" />
+                android:layout_height="wrap_content">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvRecentPosts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    tools:itemCount="3"
+                    tools:listitem="@layout/item_post_card" />
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Floating Action Button: + Tạo bài mới bằng AI -->
+    <!-- Kept hidden for binding compatibility; centered "+" button in BottomNav handles Create -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabCreatePost"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:text="Tạo bài mới bằng AI"
-        android:textColor="@color/white"
-        app:backgroundTint="@color/primary"
-        app:icon="@drawable/ic_sparkles"
-        app:iconTint="@color/white" />
+        android:visibility="gone" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
-

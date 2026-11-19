@@ -61,22 +61,28 @@ public class CreatePostFragment extends Fragment {
         binding.containerStep2.setVisibility(step == 2 ? View.VISIBLE : View.GONE);
         binding.containerStep3.setVisibility(step == 3 ? View.VISIBLE : View.GONE);
 
-        // Stepper Visuals
+        // Stepper Visuals (Segmented Pill Tabs matching design reference)
         int activeColor = getResources().getColor(R.color.primary);
-        int inactiveColor = getResources().getColor(R.color.stepper_inactive);
-        int textActive = getResources().getColor(R.color.text_primary);
         int textInactive = getResources().getColor(R.color.text_muted);
 
-        binding.tvStepBadge1.setBackgroundColor(step >= 1 ? activeColor : inactiveColor);
-        binding.tvStepLabel1.setTextColor(step >= 1 ? textActive : textInactive);
+        if (binding.tvStepCounter != null) {
+            binding.tvStepCounter.setText("Bước " + step + "/3");
+        }
+        applyPillTab(binding.tvStepLabel1, step == 1, activeColor, textInactive);
+        applyPillTab(binding.tvStepLabel2, step == 2, activeColor, textInactive);
+        applyPillTab(binding.tvStepLabel3, step == 3, activeColor, textInactive);
+    }
 
-        binding.lineStep1.setBackgroundColor(step >= 2 ? activeColor : inactiveColor);
-        binding.tvStepBadge2.setBackgroundColor(step >= 2 ? activeColor : inactiveColor);
-        binding.tvStepLabel2.setTextColor(step >= 2 ? textActive : textInactive);
-
-        binding.lineStep2.setBackgroundColor(step >= 3 ? activeColor : inactiveColor);
-        binding.tvStepBadge3.setBackgroundColor(step >= 3 ? activeColor : inactiveColor);
-        binding.tvStepLabel3.setTextColor(step >= 3 ? textActive : textInactive);
+    private void applyPillTab(android.widget.TextView tab, boolean active, int activeColor, int textInactive) {
+        if (active) {
+            tab.setBackgroundResource(R.drawable.bg_soft_pill);
+            tab.setBackgroundTintList(android.content.res.ColorStateList.valueOf(activeColor));
+            tab.setTextColor(android.graphics.Color.WHITE);
+        } else {
+            tab.setBackground(null);
+            tab.setBackgroundTintList(null);
+            tab.setTextColor(textInactive);
+        }
     }
 
     // --- STEP 1: NHẬP LIỆU ---

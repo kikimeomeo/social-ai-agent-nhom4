@@ -5,13 +5,12 @@
         android:icon="@drawable/ic_nav_home"
         android:title="@string/nav_home" />
     <item
-        android:id="@+id/nav_create"
-        android:icon="@drawable/ic_nav_create"
-        android:title="@string/nav_create" />
-    <item
         android:id="@+id/nav_inbox"
         android:icon="@drawable/ic_nav_inbox"
         android:title="@string/nav_inbox" />
+    <item
+        android:id="@+id/nav_create"
+        android:title="" />
     <item
         android:id="@+id/nav_analytics"
         android:icon="@drawable/ic_nav_analytics"
@@ -21,4 +20,3 @@
         android:icon="@drawable/ic_nav_settings"
         android:title="@string/nav_settings" />
 </menu>
-

@@ -50,10 +50,24 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        binding.qaCreate.setOnClickListener(v -> navigateTo(R.id.nav_create));
+        binding.qaInbox.setOnClickListener(v -> navigateTo(R.id.nav_inbox));
+        binding.qaAnalytics.setOnClickListener(v -> navigateTo(R.id.nav_analytics));
+        binding.qaSettings.setOnClickListener(v -> navigateTo(R.id.nav_settings));
+        binding.btnHomeBell.setOnClickListener(v -> navigateTo(R.id.nav_inbox));
+        binding.bannerPendingComments.setOnClickListener(v -> navigateTo(R.id.nav_inbox));
+        binding.tvManageChannels.setOnClickListener(v -> navigateTo(R.id.nav_settings));
+
         binding.tvViewAll.setOnClickListener(v -> {
             loadData();
             Toast.makeText(getContext(), "Đã cập nhật dữ liệu mới nhất!", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void navigateTo(int tabId) {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).navigateToTab(tabId);
+        }
     }
 
     private void setupRecyclerView() {
@@ -81,11 +95,12 @@ public class HomeFragment extends Fragment {
         List<SocialAccount> accounts = repository.getAccounts();
         for (SocialAccount acc : accounts) {
             if (acc.getPlatform() == SocialPlatform.FACEBOOK) {
-                binding.tvFbPageName.setText(acc.getAccountName());
+                String fbName = acc.getAccountName() != null ? acc.getAccountName().replace("Vietnam", "VN") : "AI Tech VN";
+                binding.tvFbPageName.setText(fbName);
                 binding.tvFbFollowers.setText(acc.getFollowerCount() + " người theo dõi");
                 binding.tvFbStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
             } else if (acc.getPlatform() == SocialPlatform.LINKEDIN) {
-                binding.tvLiProfileName.setText(acc.getAccountName());
+                binding.tvLiProfileName.setText("@aitech.vn");
                 binding.tvLiFollowers.setText(acc.getFollowerCount() + " kết nối");
                 binding.tvLiStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
             }
