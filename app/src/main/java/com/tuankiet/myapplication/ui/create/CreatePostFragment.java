@@ -30,6 +30,10 @@ public class CreatePostFragment extends Fragment {
     private int currentReviewPlatform = 0; // 0: Facebook, 1: Threads, 2: LinkedIn
     private boolean isViewingFacebookTab = true;
 
+    private String streamFbContent = "";
+    private String streamThreadsContent = "";
+    private int currentImageStyleIndex = 0;
+
     private static final int FB_CHAR_LIMIT = 63206;
     private static final int THREADS_CHAR_LIMIT = 500;
     private static final int LI_CHAR_LIMIT = 3000;
@@ -49,6 +53,14 @@ public class CreatePostFragment extends Fragment {
         setupStep1();
         setupStep2();
         setupStep3();
+
+        binding.tvStepLabel1.setOnClickListener(v -> goToStep(1));
+        binding.tvStepLabel3.setOnClickListener(v -> {
+            if (currentPost != null) {
+                bindReviewData(currentPost);
+                goToStep(3);
+            }
+        });
 
         goToStep(1);
     }
@@ -157,39 +169,67 @@ public class CreatePostFragment extends Fragment {
             Toast.makeText(getContext(), "Đã hủy sinh bài viết", Toast.LENGTH_SHORT).show();
             goToStep(1);
         });
+    }
 
-        binding.btnSkipToReview.setOnClickListener(v -> {
-            if (currentPost != null) {
-                bindReviewData(currentPost);
-                goToStep(3);
+    private void renderStreamBuffer() {
+        if (binding == null) return;
+        StringBuilder sb = new StringBuilder();
+        if (!streamFbContent.isEmpty()) {
+            sb.append("🟢 [Facebook Sub-agent - Đang tạo nội dung]\n\n")
+              .append(streamFbContent)
+              .append("\n\n");
+        }
+        if (!streamThreadsContent.isEmpty()) {
+            if (!streamFbContent.isEmpty()) {
+                sb.append("────────────────────────────────────────\n\n");
             }
+            sb.append("🔵 [Threads Sub-agent - Tối ưu < 500 ký tự]\n\n")
+              .append(streamThreadsContent)
+              .append("\n");
+        }
+        binding.tvLiveStreamOutput.setText(sb.toString());
+        binding.scrollStream.post(() -> {
+            if (binding != null) binding.scrollStream.fullScroll(View.FOCUS_DOWN);
         });
     }
 
     private void startPipeline(String topic, String tone, String language, boolean targetFb, boolean targetThreads, boolean targetLi) {
         goToStep(2);
+        streamFbContent = "";
+        streamThreadsContent = "";
+        binding.pbPipeline.setProgress(16);
         binding.tvLiveStreamOutput.setText("Bắt đầu khởi tạo AI Multi-Agent Pipeline...\nNgôn ngữ: " + language + "\n");
 
         orchestrator.generatePost(topic, tone, language, targetFb, targetThreads, targetLi, new AIAgentOrchestrator.AgentCallback() {
             @Override
             public void onStepChanged(int stepIndex, String stepTitle, String agentName) {
+                onStepChanged(stepIndex, 6, stepTitle, agentName);
+            }
+
+            @Override
+            public void onStepChanged(int stepIndex, int totalSteps, String stepTitle, String agentName) {
                 if (binding == null) return;
                 binding.tvCurrentAgent.setText(agentName);
+                if (binding.tvStepCounterBadge != null) {
+                    binding.tvStepCounterBadge.setText("Bước " + stepIndex + "/" + totalSteps);
+                }
                 binding.tvPipelineStatus.setText(stepTitle);
+                int percent = (stepIndex * 100) / totalSteps;
+                binding.pbPipeline.setProgress(percent);
             }
 
             @Override
             public void onStreamFacebookChunk(String fullCurrentText) {
                 if (binding == null) return;
-                binding.tvLiveStreamOutput.setText("[Facebook Agent Output]:\n\n" + fullCurrentText);
-                binding.scrollStream.fullScroll(View.FOCUS_DOWN);
+                streamFbContent = fullCurrentText;
+                renderStreamBuffer();
             }
 
             @Override
             public void onStreamThreadsChunk(String fullCurrentText) {
                 if (binding == null) return;
-                binding.tvLiveStreamOutput.setText("[Threads Agent Output]:\n\n" + fullCurrentText);
-                binding.scrollStream.fullScroll(View.FOCUS_DOWN);
+                streamThreadsContent = fullCurrentText;
+                renderStreamBuffer();
             }
 
             @Override
@@ -337,26 +377,40 @@ public class CreatePostFragment extends Fragment {
 
         binding.btnRetryCurrentChannel.setOnClickListener(v -> {
             if (currentPost == null) return;
-            Toast.makeText(getContext(), "Đang yêu cầu AI viết lại bản mới...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Đang yêu cầu AI viết lại kênh này...", Toast.LENGTH_SHORT).show();
             goToStep(2);
+            streamFbContent = "";
+            streamThreadsContent = "";
             orchestrator.retryChannel(currentPost, currentReviewPlatform, new AIAgentOrchestrator.AgentCallback() {
                 @Override
                 public void onStepChanged(int stepIndex, String stepTitle, String agentName) {
+                    onStepChanged(stepIndex, 6, stepTitle, agentName);
+                }
+
+                @Override
+                public void onStepChanged(int stepIndex, int totalSteps, String stepTitle, String agentName) {
                     if (binding == null) return;
                     binding.tvCurrentAgent.setText(agentName);
+                    if (binding.tvStepCounterBadge != null) {
+                        binding.tvStepCounterBadge.setText("Bước " + stepIndex + "/" + totalSteps);
+                    }
                     binding.tvPipelineStatus.setText(stepTitle);
+                    int percent = (stepIndex * 100) / totalSteps;
+                    binding.pbPipeline.setProgress(percent);
                 }
 
                 @Override
                 public void onStreamFacebookChunk(String fullCurrentText) {
                     if (binding == null) return;
-                    binding.tvLiveStreamOutput.setText("[Facebook Retry Output]:\n\n" + fullCurrentText);
+                    streamFbContent = fullCurrentText;
+                    renderStreamBuffer();
                 }
 
                 @Override
                 public void onStreamThreadsChunk(String fullCurrentText) {
                     if (binding == null) return;
-                    binding.tvLiveStreamOutput.setText("[Threads Retry Output]:\n\n" + fullCurrentText);
+                    streamThreadsContent = fullCurrentText;
+                    renderStreamBuffer();
                 }
 
                 @Override
@@ -382,44 +436,103 @@ public class CreatePostFragment extends Fragment {
             });
         });
 
-        // ĐĂNG THẬT LÊN CÁC APP TRÊN MÁY (Facebook, LinkedIn, Threads, Zalo,...)
+        binding.btnRegenerateImage.setOnClickListener(v -> {
+            if (currentPost == null) return;
+            currentImageStyleIndex = (currentImageStyleIndex + 1) % 10;
+            Toast.makeText(getContext(), "AI đang tìm & tạo ảnh minh họa mới...", Toast.LENGTH_SHORT).show();
+            String platformName = (currentReviewPlatform == 0) ? "Facebook" : "Threads";
+            orchestrator.regenerateImage(requireContext(), currentPost.getTopic(), platformName, currentImageStyleIndex, new AIAgentOrchestrator.ImageCallback() {
+                @Override
+                public void onSuccess(String newImageUrl) {
+                    if (binding == null) return;
+                    currentPost.setImageUrl(newImageUrl);
+                    binding.cardReviewImage.setVisibility(View.VISIBLE);
+                    binding.btnRestoreImage.setVisibility(View.GONE);
+                    try {
+                        binding.ivReviewImage.setImageURI(null);
+                        binding.ivReviewImage.setImageURI(android.net.Uri.parse(newImageUrl));
+                    } catch (Exception ignored) {}
+                    Toast.makeText(getContext(), "🖼️ Đã cập nhật ảnh minh họa mới!", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+
+        binding.btnRemoveImage.setOnClickListener(v -> {
+            if (currentPost == null) return;
+            currentPost.setImageUrl("");
+            binding.cardReviewImage.setVisibility(View.GONE);
+            binding.btnRestoreImage.setVisibility(View.VISIBLE);
+            binding.tvImagePromptPreview.setText("Đã gỡ ảnh (Đăng bài thuần chữ)");
+            Toast.makeText(getContext(), "Đã gỡ ảnh đính kèm", Toast.LENGTH_SHORT).show();
+        });
+
+        binding.btnRestoreImage.setOnClickListener(v -> {
+            binding.btnRegenerateImage.performClick();
+        });
+
+        // ĐĂNG THẬT LÊN CÁC APP TRÊN MÁY (BottomSheet chuyên nghiệp, tự tách nội dung đúng kênh)
         binding.btnShareToRealApp.setOnClickListener(v -> {
             if (currentPost == null) return;
-            String content = binding.etReviewContent.getText().toString();
-            if (content.trim().isEmpty()) {
+            String currentTabContent = binding.etReviewContent.getText().toString();
+            String fbContent = (currentPost.getContentFacebook() != null && !currentPost.getContentFacebook().trim().isEmpty())
+                    ? currentPost.getContentFacebook() : currentTabContent;
+            String threadsContent = (currentPost.getContentThreads() != null && !currentPost.getContentThreads().trim().isEmpty())
+                    ? currentPost.getContentThreads() : currentTabContent;
+
+            if (fbContent.trim().isEmpty() && threadsContent.trim().isEmpty()) {
                 Toast.makeText(getContext(), "Nội dung bài viết đang trống!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            CharSequence[] options = {
-                    "🚀 TỰ ĐỘNG đăng lên Threads (Official Threads API - Không cần mở app)",
-                    "🌐 TỰ ĐỘNG đăng lên Facebook Fanpage (Meta Graph API)",
-                    "Mở App Threads (Dán bài thủ công)",
-                    "Mở App Facebook (Dán bài thủ công)",
-                    "Mở App LinkedIn (Dán bài thủ công)",
-                    "Chia sẻ qua ứng dụng khác..."
-            };
-            new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Chọn phương thức đăng bài thật:")
-                    .setItems(options, (dialog, which) -> {
-                        if (which == 0) {
-                            openThreadsPublishDialog(content);
-                        } else if (which == 1) {
-                            openMetaGraphPublishDialog(content);
-                        } else if (which == 2) {
-                            com.tuankiet.myapplication.util.RealSocialPublisher.shareToThreads(requireActivity(), content);
-                        } else if (which == 3) {
-                            com.tuankiet.myapplication.util.RealSocialPublisher.shareToRealApp(requireActivity(), com.tuankiet.myapplication.model.SocialPlatform.FACEBOOK, content);
-                        } else if (which == 4) {
-                            com.tuankiet.myapplication.util.RealSocialPublisher.shareToRealApp(requireActivity(), com.tuankiet.myapplication.model.SocialPlatform.LINKEDIN, content);
-                        } else {
-                            Intent shareIntent = new Intent(Intent.ACTION_SEND)
-                                    .setType("text/plain")
-                                    .putExtra(Intent.EXTRA_TEXT, content);
-                            startActivity(Intent.createChooser(shareIntent, "Đăng bài SocialAI lên:"));
-                        }
-                    })
-                    .show();
+            com.google.android.material.bottomsheet.BottomSheetDialog sheetDialog =
+                    new com.google.android.material.bottomsheet.BottomSheetDialog(requireContext());
+            com.tuankiet.myapplication.databinding.DialogPublishOptionsBinding sheetBinding =
+                    com.tuankiet.myapplication.databinding.DialogPublishOptionsBinding.inflate(getLayoutInflater());
+            sheetDialog.setContentView(sheetBinding.getRoot());
+
+            boolean showThreads = currentPost.isTargetThreads() || !threadsContent.trim().isEmpty();
+            boolean showFb = currentPost.isTargetFacebook() || !fbContent.trim().isEmpty();
+
+            sheetBinding.cardOptThreadsApi.setVisibility(showThreads ? View.VISIBLE : View.GONE);
+            sheetBinding.cardOptOpenThreads.setVisibility(showThreads ? View.VISIBLE : View.GONE);
+            sheetBinding.cardOptFacebookApi.setVisibility(showFb ? View.VISIBLE : View.GONE);
+            sheetBinding.cardOptOpenFacebook.setVisibility(showFb ? View.VISIBLE : View.GONE);
+
+            sheetBinding.cardOptThreadsApi.setOnClickListener(opt -> {
+                sheetDialog.dismiss();
+                openThreadsPublishDialog(threadsContent);
+            });
+
+            sheetBinding.cardOptFacebookApi.setOnClickListener(opt -> {
+                sheetDialog.dismiss();
+                openMetaGraphPublishDialog(fbContent);
+            });
+
+            sheetBinding.cardOptOpenThreads.setOnClickListener(opt -> {
+                sheetDialog.dismiss();
+                com.tuankiet.myapplication.util.RealSocialPublisher.shareToThreads(requireActivity(), threadsContent);
+            });
+
+            sheetBinding.cardOptOpenFacebook.setOnClickListener(opt -> {
+                sheetDialog.dismiss();
+                com.tuankiet.myapplication.util.RealSocialPublisher.shareToRealApp(
+                        requireActivity(), com.tuankiet.myapplication.model.SocialPlatform.FACEBOOK, fbContent);
+            });
+
+            sheetBinding.btnOptShareSystem.setOnClickListener(opt -> {
+                sheetDialog.dismiss();
+                Intent shareIntent = new Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, currentTabContent);
+                startActivity(Intent.createChooser(shareIntent, "Đăng bài SocialAI lên:"));
+            });
+
+            sheetDialog.show();
         });
 
         // ĐĂNG TỰ ĐỘNG QUA META GRAPH API (Nút cấu hình nhanh)
@@ -498,6 +611,18 @@ public class CreatePostFragment extends Fragment {
     private void bindReviewData(Post post) {
         if (post == null || binding == null) return;
         binding.tvImagePromptPreview.setText(post.getImagePrompt() != null ? post.getImagePrompt() : "Tech 3D vector illustration");
+
+        if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
+            binding.cardReviewImage.setVisibility(View.VISIBLE);
+            binding.btnRestoreImage.setVisibility(View.GONE);
+            try {
+                binding.ivReviewImage.setImageURI(null);
+                binding.ivReviewImage.setImageURI(android.net.Uri.parse(post.getImageUrl()));
+            } catch (Exception ignored) {}
+        } else {
+            binding.cardReviewImage.setVisibility(View.GONE);
+            binding.btnRestoreImage.setVisibility(View.VISIBLE);
+        }
 
         if (post.isTargetFacebook()) {
             currentReviewPlatform = 0;
