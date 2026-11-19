@@ -101,7 +101,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "output_snippet TEXT, " +
                 "tokens_used INTEGER, " +
                 "cost_estimate REAL, " +
-                "duration_ms INTEGER)");
+                "duration_ms INTEGER, " +
+                "model_name TEXT)");
 
         createThreadsPublicationsTable(db);
     }
@@ -305,8 +306,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     // --- Agent Logs Operations ---
+    private void ensureAgentLogModelColumn(SQLiteDatabase db) {
+        try {
+            db.execSQL("ALTER TABLE agent_logs ADD COLUMN model_name TEXT");
+        } catch (Exception ignored) {
+        }
+    }
+
     public long insertLog(AgentLog log) {
         SQLiteDatabase db = getWritableDatabase();
+        ensureAgentLogModelColumn(db);
         ContentValues cv = new ContentValues();
         cv.put("timestamp", log.getTimestamp());
         cv.put("step_name", log.getStepName());
@@ -316,12 +325,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("tokens_used", log.getTokensUsed());
         cv.put("cost_estimate", log.getCostEstimate());
         cv.put("duration_ms", log.getDurationMs());
+        cv.put("model_name", log.getModelName() != null ? log.getModelName() : "gemini-3.1-flash-lite");
         return db.insert("agent_logs", null, cv);
     }
 
     public List<AgentLog> getAllLogs() {
         List<AgentLog> list = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
+        ensureAgentLogModelColumn(db);
         Cursor cursor = db.rawQuery("SELECT * FROM agent_logs ORDER BY timestamp DESC", null);
         if (cursor != null && cursor.moveToFirst()) {
             do {
@@ -335,11 +346,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 log.setTokensUsed(cursor.getInt(cursor.getColumnIndexOrThrow("tokens_used")));
                 log.setCostEstimate(cursor.getDouble(cursor.getColumnIndexOrThrow("cost_estimate")));
                 log.setDurationMs(cursor.getLong(cursor.getColumnIndexOrThrow("duration_ms")));
+                int modelIdx = cursor.getColumnIndex("model_name");
+                if (modelIdx != -1 && !cursor.isNull(modelIdx)) {
+                    log.setModelName(cursor.getString(modelIdx));
+                } else {
+                    log.setModelName("gemini-3.1-flash-lite");
+                }
                 list.add(log);
             } while (cursor.moveToNext());
             cursor.close();
         }
         return list;
+    }
+
+    public void clearAllLogs() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete("agent_logs", null, null);
     }
 
     public boolean isDatabaseEmpty() {
