@@ -43,21 +43,21 @@ public class MockDataRepository {
                 true,
                 12450,
                 "F",
-                "Đang kết nối qua Page Access Token"
+                "Đang kết nối qua Meta Graph API (Page Access Token)"
         );
         dbHelper.insertOrUpdateAccount(fbAccount);
 
-        SocialAccount liAccount = new SocialAccount(
-                "acc_li_1",
-                SocialPlatform.LINKEDIN,
-                "Nguyen Van A (Tech Lead)",
-                "@nguyen-van-a-ai",
+        SocialAccount thAccount = new SocialAccount(
+                "acc_threads_1",
+                SocialPlatform.THREADS,
+                "AI Tech VN",
+                "@aitech.vn",
                 true,
                 8920,
-                "L",
-                "Đang kết nối qua LinkedIn Member OAuth"
+                "T",
+                "Đang kết nối qua Meta Threads API (Official v1.0)"
         );
-        dbHelper.insertOrUpdateAccount(liAccount);
+        dbHelper.insertOrUpdateAccount(thAccount);
 
         // 2. Seed Recent Posts
         Post post1 = new Post(
@@ -283,7 +283,29 @@ public class MockDataRepository {
     }
 
     public List<SocialAccount> getAccounts() {
-        return dbHelper.getAllAccounts();
+        List<SocialAccount> accounts = dbHelper.getAllAccounts();
+        boolean hasThreads = false;
+        for (SocialAccount acc : accounts) {
+            if (acc.getPlatform() == SocialPlatform.THREADS) {
+                hasThreads = true;
+                break;
+            }
+        }
+        if (!hasThreads) {
+            SocialAccount thAccount = new SocialAccount(
+                    "acc_threads_1",
+                    SocialPlatform.THREADS,
+                    "AI Tech VN",
+                    "@aitech.vn",
+                    true,
+                    8920,
+                    "T",
+                    "Đang kết nối qua Meta Threads API (Official v1.0)"
+            );
+            dbHelper.insertOrUpdateAccount(thAccount);
+            accounts.add(thAccount);
+        }
+        return accounts;
     }
 
     public void updateAccountStatus(SocialAccount account) {
