@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "social_ai.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     private static DatabaseHelper instance;
 
@@ -62,7 +62,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "reach INTEGER, " +
                 "likes INTEGER, " +
                 "comments INTEGER, " +
-                "shares INTEGER)");
+                "shares INTEGER, " +
+                "idempotency_key TEXT, " +
+                "fb_post_url TEXT, " +
+                "threads_post_url TEXT, " +
+                "publish_error TEXT, " +
+                "retry_count INTEGER DEFAULT 0, " +
+                "content_threads TEXT, " +
+                "target_threads INTEGER DEFAULT 0, " +
+                "published_fb INTEGER DEFAULT 0, " +
+                "published_threads INTEGER DEFAULT 0)");
 
         // Table Comments
         db.execSQL("CREATE TABLE comments (" +
@@ -115,6 +124,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 2) {
             createThreadsPublicationsTable(db);
         }
+        if (oldVersion < 3) {
+            // Add new columns to posts table for F5 Offline Queue & Idempotency
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN idempotency_key TEXT"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN fb_post_url TEXT"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN threads_post_url TEXT"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN publish_error TEXT"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN retry_count INTEGER DEFAULT 0"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN content_threads TEXT"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN target_threads INTEGER DEFAULT 0"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN published_fb INTEGER DEFAULT 0"); } catch (Exception ignored) {}
+            try { db.execSQL("ALTER TABLE posts ADD COLUMN published_threads INTEGER DEFAULT 0"); } catch (Exception ignored) {}
+        }
     }
 
     public long saveThreadsPublication(
@@ -153,9 +174,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("tone", post.getTone());
         cv.put("content_fb", post.getContentFacebook());
         cv.put("content_li", post.getContentLinkedIn());
+        cv.put("content_threads", post.getContentThreads());
         cv.put("status", post.getStatus());
         cv.put("target_fb", post.isTargetFacebook() ? 1 : 0);
         cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
+        cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
         cv.put("created_at", post.getCreatedAt());
         cv.put("image_url", post.getImageUrl());
         cv.put("image_prompt", post.getImagePrompt());
@@ -163,7 +186,84 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("likes", post.getLikeCount());
         cv.put("comments", post.getCommentCount());
         cv.put("shares", post.getShareCount());
-        return db.insert("posts", null, cv);
+        cv.put("idempotency_key", post.getIdempotencyKey());
+        cv.put("fb_post_url", post.getFbPostUrl());
+        cv.put("threads_post_url", post.getThreadsPostUrl());
+        cv.put("publish_error", post.getPublishError());
+        cv.put("retry_count", post.getRetryCount());
+        cv.put("published_fb", post.isPublishedFacebook() ? 1 : 0);
+        cv.put("published_threads", post.isPublishedThreads() ? 1 : 0);
+        long id = db.insert("posts", null, cv);
+        if (id != -1 && post.getId() == 0) {
+            post.setId(id);
+        }
+        return id;
+    }
+
+    private Post cursorToPost(Cursor cursor) {
+        Post post = new Post();
+        post.setId(cursor.getLong(cursor.getColumnIndexOrThrow("id")));
+        post.setTopic(cursor.getString(cursor.getColumnIndexOrThrow("topic")));
+        post.setTone(cursor.getString(cursor.getColumnIndexOrThrow("tone")));
+        post.setContentFacebook(cursor.getString(cursor.getColumnIndexOrThrow("content_fb")));
+        post.setContentLinkedIn(cursor.getString(cursor.getColumnIndexOrThrow("content_li")));
+        post.setStatus(cursor.getString(cursor.getColumnIndexOrThrow("status")));
+        post.setTargetFacebook(cursor.getInt(cursor.getColumnIndexOrThrow("target_fb")) == 1);
+        post.setTargetLinkedIn(cursor.getInt(cursor.getColumnIndexOrThrow("target_li")) == 1);
+        post.setCreatedAt(cursor.getLong(cursor.getColumnIndexOrThrow("created_at")));
+        post.setImageUrl(cursor.getString(cursor.getColumnIndexOrThrow("image_url")));
+        post.setImagePrompt(cursor.getString(cursor.getColumnIndexOrThrow("image_prompt")));
+        post.setReachCount(cursor.getInt(cursor.getColumnIndexOrThrow("reach")));
+        post.setLikeCount(cursor.getInt(cursor.getColumnIndexOrThrow("likes")));
+        post.setCommentCount(cursor.getInt(cursor.getColumnIndexOrThrow("comments")));
+        post.setShareCount(cursor.getInt(cursor.getColumnIndexOrThrow("shares")));
+
+        int colContentThreads = cursor.getColumnIndex("content_threads");
+        if (colContentThreads != -1 && !cursor.isNull(colContentThreads)) {
+            post.setContentThreads(cursor.getString(colContentThreads));
+        }
+
+        int colTargetThreads = cursor.getColumnIndex("target_threads");
+        if (colTargetThreads != -1 && !cursor.isNull(colTargetThreads)) {
+            post.setTargetThreads(cursor.getInt(colTargetThreads) == 1);
+        }
+
+        int colPubFb = cursor.getColumnIndex("published_fb");
+        if (colPubFb != -1 && !cursor.isNull(colPubFb)) {
+            post.setPublishedFacebook(cursor.getInt(colPubFb) == 1);
+        }
+
+        int colPubThreads = cursor.getColumnIndex("published_threads");
+        if (colPubThreads != -1 && !cursor.isNull(colPubThreads)) {
+            post.setPublishedThreads(cursor.getInt(colPubThreads) == 1);
+        }
+
+        int colIdempotency = cursor.getColumnIndex("idempotency_key");
+        if (colIdempotency != -1 && !cursor.isNull(colIdempotency)) {
+            post.setIdempotencyKey(cursor.getString(colIdempotency));
+        }
+
+        int colFbUrl = cursor.getColumnIndex("fb_post_url");
+        if (colFbUrl != -1 && !cursor.isNull(colFbUrl)) {
+            post.setFbPostUrl(cursor.getString(colFbUrl));
+        }
+
+        int colThreadsUrl = cursor.getColumnIndex("threads_post_url");
+        if (colThreadsUrl != -1 && !cursor.isNull(colThreadsUrl)) {
+            post.setThreadsPostUrl(cursor.getString(colThreadsUrl));
+        }
+
+        int colError = cursor.getColumnIndex("publish_error");
+        if (colError != -1 && !cursor.isNull(colError)) {
+            post.setPublishError(cursor.getString(colError));
+        }
+
+        int colRetry = cursor.getColumnIndex("retry_count");
+        if (colRetry != -1 && !cursor.isNull(colRetry)) {
+            post.setRetryCount(cursor.getInt(colRetry));
+        }
+
+        return post;
     }
 
     public List<Post> getAllPosts() {
@@ -172,23 +272,43 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery("SELECT * FROM posts ORDER BY created_at DESC", null);
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                Post post = new Post();
-                post.setId(cursor.getLong(cursor.getColumnIndexOrThrow("id")));
-                post.setTopic(cursor.getString(cursor.getColumnIndexOrThrow("topic")));
-                post.setTone(cursor.getString(cursor.getColumnIndexOrThrow("tone")));
-                post.setContentFacebook(cursor.getString(cursor.getColumnIndexOrThrow("content_fb")));
-                post.setContentLinkedIn(cursor.getString(cursor.getColumnIndexOrThrow("content_li")));
-                post.setStatus(cursor.getString(cursor.getColumnIndexOrThrow("status")));
-                post.setTargetFacebook(cursor.getInt(cursor.getColumnIndexOrThrow("target_fb")) == 1);
-                post.setTargetLinkedIn(cursor.getInt(cursor.getColumnIndexOrThrow("target_li")) == 1);
-                post.setCreatedAt(cursor.getLong(cursor.getColumnIndexOrThrow("created_at")));
-                post.setImageUrl(cursor.getString(cursor.getColumnIndexOrThrow("image_url")));
-                post.setImagePrompt(cursor.getString(cursor.getColumnIndexOrThrow("image_prompt")));
-                post.setReachCount(cursor.getInt(cursor.getColumnIndexOrThrow("reach")));
-                post.setLikeCount(cursor.getInt(cursor.getColumnIndexOrThrow("likes")));
-                post.setCommentCount(cursor.getInt(cursor.getColumnIndexOrThrow("comments")));
-                post.setShareCount(cursor.getInt(cursor.getColumnIndexOrThrow("shares")));
-                list.add(post);
+                list.add(cursorToPost(cursor));
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+        return list;
+    }
+
+    public Post getPostById(long id) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM posts WHERE id = ?", new String[]{String.valueOf(id)});
+        Post post = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            post = cursorToPost(cursor);
+            cursor.close();
+        }
+        return post;
+    }
+
+    public Post getPostByIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) return null;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM posts WHERE idempotency_key = ?", new String[]{idempotencyKey.trim()});
+        Post post = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            post = cursorToPost(cursor);
+            cursor.close();
+        }
+        return post;
+    }
+
+    public List<Post> getPendingPosts() {
+        List<Post> list = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM posts WHERE status = ? ORDER BY created_at ASC", new String[]{Post.STATUS_PENDING});
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                list.add(cursorToPost(cursor));
             } while (cursor.moveToNext());
             cursor.close();
         }
@@ -202,13 +322,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("tone", post.getTone());
         cv.put("content_fb", post.getContentFacebook());
         cv.put("content_li", post.getContentLinkedIn());
+        cv.put("content_threads", post.getContentThreads());
         cv.put("status", post.getStatus());
         cv.put("target_fb", post.isTargetFacebook() ? 1 : 0);
         cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
+        cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
         cv.put("reach", post.getReachCount());
         cv.put("likes", post.getLikeCount());
         cv.put("comments", post.getCommentCount());
         cv.put("shares", post.getShareCount());
+        cv.put("idempotency_key", post.getIdempotencyKey());
+        cv.put("fb_post_url", post.getFbPostUrl());
+        cv.put("threads_post_url", post.getThreadsPostUrl());
+        cv.put("publish_error", post.getPublishError());
+        cv.put("retry_count", post.getRetryCount());
+        cv.put("published_fb", post.isPublishedFacebook() ? 1 : 0);
+        cv.put("published_threads", post.isPublishedThreads() ? 1 : 0);
         db.update("posts", cv, "id = ?", new String[]{String.valueOf(post.getId())});
     }
 
