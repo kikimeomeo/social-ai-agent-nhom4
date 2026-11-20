@@ -46,13 +46,19 @@
 
     <!-- Inbox Screen -->
     <string name="inbox_title">Hộp Thư Tương Tác</string>
-    <string name="inbox_subtitle">Gom phản hồi từ Facebook &amp; LinkedIn</string>
+    <string name="inbox_subtitle">Gom phản hồi từ Facebook &amp; Threads</string>
     <string name="filter_all">Tất cả</string>
     <string name="filter_facebook">Facebook</string>
+    <string name="filter_threads">Threads</string>
     <string name="filter_linkedin">LinkedIn</string>
+    <string name="filter_status_all">Tất cả</string>
+    <string name="filter_status_unanswered">Chưa trả lời</string>
+    <string name="filter_status_answered">Đã trả lời</string>
+    <string name="filter_post_all">Tất cả bài viết</string>
     <string name="badge_praise">Khen ngợi</string>
     <string name="badge_question">Câu hỏi</string>
-    <string name="badge_negative">Tiêu cực / Cảnh báo</string>
+    <string name="badge_suggestion">Góp ý</string>
+    <string name="badge_negative">Tiêu cực</string>
     <string name="badge_spam">Spam</string>
     <string name="ai_suggested_reply">Gợi ý phản hồi từ AI:</string>
     <string name="safety_alert_title">CẢNH BÁO AN TOÀN AI</string>

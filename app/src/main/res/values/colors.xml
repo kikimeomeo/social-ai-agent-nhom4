@@ -37,6 +37,8 @@
     <color name="status_green_bg">#CCFBF1</color>
     <color name="status_blue">#0284C7</color>
     <color name="status_blue_bg">#E0F2FE</color>
+    <color name="status_purple">#6D28D9</color>
+    <color name="status_purple_bg">#EDE9FE</color>
     <color name="status_amber">#D97706</color>
     <color name="status_amber_bg">#FEF3C7</color>
     <color name="status_red">#E11D48</color>
