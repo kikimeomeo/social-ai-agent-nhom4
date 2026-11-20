@@ -29,6 +29,10 @@ public class SecurePreferenceManager {
     private static final String KEY_LI_EXPIRY = "oauth_li_expiry";
 
     private static final String KEY_THREADS_TOKEN = "threads_access_token";
+    private static final String KEY_FB_PAGE_ID = "fb_page_id";
+    private static final String KEY_FB_PAGE_TOKEN = "fb_page_access_token";
+    private static final String KEY_CONTROLLED_AUTO_REPLY = "controlled_auto_reply_enabled";
+    private static final String KEY_LAST_COMMENT_SYNC_TIME = "last_comment_sync_time";
 
     private final SharedPreferences prefs;
     private static SecurePreferenceManager instance;
@@ -199,5 +203,51 @@ public class SecurePreferenceManager {
         prefs.edit()
                 .remove(KEY_THREADS_TOKEN)
                 .apply();
+    }
+
+    // --- Facebook Page Graph API Credentials ---
+    public void saveFacebookPageCredentials(String pageId, String pageAccessToken) {
+        String cleanPageId = pageId != null ? pageId.trim() : "";
+        String cleanToken = pageAccessToken != null ? pageAccessToken.trim() : "";
+        prefs.edit()
+                .putString(KEY_FB_PAGE_ID, cleanPageId)
+                .putString(KEY_FB_PAGE_TOKEN, encryptSecret(cleanToken))
+                .apply();
+    }
+
+    public String getFacebookPageId() {
+        return prefs.getString(KEY_FB_PAGE_ID, "").trim();
+    }
+
+    public String getFacebookPageToken() {
+        String stored = prefs.getString(KEY_FB_PAGE_TOKEN, "");
+        if (!stored.isEmpty()) {
+            return decryptSecret(stored);
+        }
+        return getOAuthToken(SocialPlatform.FACEBOOK);
+    }
+
+    public void clearFacebookPageCredentials() {
+        prefs.edit()
+                .remove(KEY_FB_PAGE_ID)
+                .remove(KEY_FB_PAGE_TOKEN)
+                .apply();
+    }
+
+    // --- F6 Controlled Auto-Reply & Sync State ---
+    public boolean isControlledAutoReplyEnabled() {
+        return prefs.getBoolean(KEY_CONTROLLED_AUTO_REPLY, true);
+    }
+
+    public void setControlledAutoReplyEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_CONTROLLED_AUTO_REPLY, enabled).apply();
+    }
+
+    public long getLastCommentSyncTime() {
+        return prefs.getLong(KEY_LAST_COMMENT_SYNC_TIME, 0L);
+    }
+
+    public void setLastCommentSyncTime(long timestampMillis) {
+        prefs.edit().putLong(KEY_LAST_COMMENT_SYNC_TIME, timestampMillis).apply();
     }
 }

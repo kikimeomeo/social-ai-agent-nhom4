@@ -1,215 +1,279 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/bg_badge_rounded"
-    android:backgroundTint="@color/card_bg"
-    android:orientation="vertical"
-    android:padding="18dp">
+    android:layout_height="wrap_content">
 
-    <!-- Handle Bar -->
-    <View
-        android:layout_width="36dp"
-        android:layout_height="4dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="12dp"
-        android:background="@drawable/bg_soft_pill"
-        android:backgroundTint="@color/stepper_inactive" />
-
-    <!-- Header Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:background="@drawable/bg_badge_rounded"
+        android:backgroundTint="@color/card_bg"
+        android:orientation="vertical"
+        android:padding="18dp">
 
-        <TextView
-            android:id="@+id/tvDialogAuthorName"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            tools:text="Trả lời Minh Anh" />
-
-        <TextView
-            android:id="@+id/tvDialogCategoryBadge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <!-- Handle Bar -->
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="12dp"
             android:background="@drawable/bg_soft_pill"
-            android:backgroundTint="@color/status_green_bg"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
-            android:text="Khen ngợi"
-            android:textColor="@color/status_green"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+            android:backgroundTint="@color/stepper_inactive" />
 
-    <TextView
-        android:id="@+id/tvDialogPostTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="@color/text_muted"
-        android:textSize="11sp"
-        tools:text="Về bài: 5 Xu Hướng AI 2026..." />
-
-    <!-- Original Comment Box (borderless soft fill) -->
-    <TextView
-        android:id="@+id/tvDialogCommentText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_soft_input"
-        android:lineSpacingExtra="2dp"
-        android:padding="12dp"
-        android:textColor="@color/text_primary"
-        android:textSize="12sp"
-        tools:text="App có hỗ trợ tự nhập Gemini API Key cá nhân không bạn?" />
-
-    <!-- AI Safety Alert Banner (borderless soft red fill) -->
-    <LinearLayout
-        android:id="@+id/cardSafetyAlert"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_soft_input"
-        android:backgroundTint="@color/status_red_bg"
-        android:orientation="vertical"
-        android:padding="12dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cảnh báo an toàn AI"
-            android:textColor="@color/status_red"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvSafetyAlertDetail"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:lineSpacingExtra="2dp"
-            android:text="Bình luận tiêu cực/spam. Auto-reply đã khóa để duyệt tay."
-            android:textColor="@color/status_red"
-            android:textSize="11sp" />
-    </LinearLayout>
-
-    <!-- AI Suggested Reply Container (borderless soft blue fill) -->
-    <LinearLayout
-        android:id="@+id/cardAiSuggestedReply"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_soft_input"
-        android:orientation="vertical"
-        android:padding="12dp">
-
+        <!-- Header Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <ImageView
+                android:id="@+id/ivDialogPlatform"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="6dp"
+                android:src="@drawable/ic_facebook" />
+
             <TextView
+                android:id="@+id/tvDialogAuthorName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Gợi ý từ AI:"
-                android:textColor="@color/primary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
+                android:textSize="14.5sp"
+                android:textStyle="bold"
+                tools:text="Trần Minh Khoa (15 phút trước)" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnApplySuggestion"
-                style="@style/Widget.Material3.Button.TextButton"
+            <TextView
+                android:id="@+id/tvDialogCategoryBadge"
                 android:layout_width="wrap_content"
-                android:layout_height="26dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minHeight="0dp"
-                android:paddingHorizontal="6dp"
-                android:text="Dùng gợi ý"
-                android:textColor="@color/primary_dark"
-                android:textSize="11sp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_soft_pill"
+                android:backgroundTint="@color/status_green_bg"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:text="Khen ngợi"
+                android:textColor="@color/status_green"
+                android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvAiSuggestedText"
+            android:id="@+id/tvDialogPostTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/text_muted"
+            android:textSize="11sp"
+            tools:text="Về bài: 5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026" />
+
+        <TextView
+            android:id="@+id/tvDialogAiMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/primary_dark"
+            android:textSize="10.5sp"
+            tools:text="Độ tin cậy AI: 93% • Đủ điều kiện tự động trả lời" />
+
+        <!-- Original Comment Box -->
+        <TextView
+            android:id="@+id/tvDialogCommentText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_soft_input"
             android:lineSpacingExtra="2dp"
+            android:padding="12dp"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
-            tools:text="Cảm ơn bạn đã góp ý!" />
+            tools:text="App có hỗ trợ tự nhập Gemini API Key cá nhân không bạn?" />
+
+        <!-- AI Safety Alert Banner -->
+        <LinearLayout
+            android:id="@+id/cardSafetyAlert"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_soft_input"
+            android:backgroundTint="@color/status_red_bg"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvSafetyAlertTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cảnh báo an toàn AI • Khóa tự động trả lời"
+                android:textColor="@color/status_red"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSafetyAlertDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:lineSpacingExtra="2dp"
+                android:text="Bình luận tiêu cực/chứa thông tin cá nhân/chưa chắc chắn. Auto-reply đã khóa để duyệt tay."
+                android:textColor="@color/status_red"
+                android:textSize="11sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRequestManualDraft"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_marginTop="4dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:paddingHorizontal="4dp"
+                android:text="✨ Tạo bản nháp hòa giải (chỉnh sửa tay)"
+                android:textColor="@color/status_red"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- AI Suggested Reply Container -->
+        <LinearLayout
+            android:id="@+id/cardAiSuggestedReply"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_soft_input"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvAiSuggestedLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Gợi ý AI theo ngữ cảnh bài đăng:"
+                    android:textColor="@color/primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRegenerateSuggestion"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="0dp"
+                    android:paddingHorizontal="6dp"
+                    android:text="✨ Tạo lại"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnApplySuggestion"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="0dp"
+                    android:paddingHorizontal="6dp"
+                    android:text="Dùng gợi ý"
+                    android:textColor="@color/primary_dark"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvAiSuggestedText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                tools:text="Cảm ơn bạn đã quan tâm và góp ý cho bài viết!" />
+        </LinearLayout>
+
+        <!-- Editable Reply Input Box -->
+        <EditText
+            android:id="@+id/etReplyInput"
+            android:layout_width="match_parent"
+            android:layout_height="88dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_soft_input"
+            android:backgroundTint="@color/bg_main"
+            android:gravity="top|start"
+            android:hint="Chỉnh sửa hoặc nhập nội dung phản hồi trước khi gửi..."
+            android:inputType="textMultiLine|textCapSentences"
+            android:padding="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tvDeliveryChannelHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp"
+            tools:text="Kênh gửi: Lưu cục bộ (Chế độ Demo — cấu hình Token để gửi qua API thật)" />
+
+        <!-- Action Pill Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDismissDialog"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:text="Đóng"
+                android:textColor="@color/primary_dark"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/bg_soft_fill"
+                app:cornerRadius="20dp"
+                app:strokeWidth="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSendReply"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1.2"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:text="Gửi trả lời"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/primary"
+                app:cornerRadius="20dp" />
+        </LinearLayout>
     </LinearLayout>
-
-    <!-- Reply Input Box -->
-    <EditText
-        android:id="@+id/etReplyInput"
-        android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_soft_input"
-        android:backgroundTint="@color/bg_main"
-        android:gravity="top|start"
-        android:hint="Nhập nội dung phản hồi..."
-        android:padding="12dp"
-        android:textColor="@color/text_primary"
-        android:textColorHint="@color/text_muted"
-        android:textSize="12sp" />
-
-    <!-- Action Pill Buttons -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDismissDialog"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_marginEnd="6dp"
-            android:layout_weight="1"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minHeight="0dp"
-            android:text="Đóng"
-            android:textColor="@color/primary_dark"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/bg_soft_fill"
-            app:cornerRadius="20dp"
-            app:strokeWidth="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSendReply"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="6dp"
-            android:layout_weight="1"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minHeight="0dp"
-            android:text="Gửi trả lời"
-            android:textColor="@color/white"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/primary"
-            app:cornerRadius="20dp" />
-    </LinearLayout>
-</LinearLayout>
-
+</androidx.core.widget.NestedScrollView>
