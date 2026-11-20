@@ -20,6 +20,7 @@ import com.tuankiet.myapplication.model.SocialAccount;
 import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.repository.MockDataRepository;
 import com.tuankiet.myapplication.data.SecurePreferenceManager;
+import com.tuankiet.myapplication.ui.preview.PreviewDialogFragment;
 
 import java.util.List;
 
@@ -76,7 +77,29 @@ public class HomeFragment extends Fragment {
         binding.rvRecentPosts.setAdapter(adapter);
 
         adapter.setOnPostClickListener(post -> {
-            Toast.makeText(getContext(), "Bài viết: " + post.getTopic(), Toast.LENGTH_SHORT).show();
+            SocialPlatform initialPlatform = (post.isTargetThreads() && !post.isTargetFacebook())
+                    ? SocialPlatform.THREADS
+                    : SocialPlatform.FACEBOOK;
+            PreviewDialogFragment dialog = PreviewDialogFragment.newInstance(post, initialPlatform);
+            dialog.setOnPreviewActionListener(new PreviewDialogFragment.OnPreviewActionListener() {
+                @Override
+                public void onPostUpdated(Post updatedPost) {
+                    if (!isAdded() || updatedPost == null) return;
+                    repository.updatePost(updatedPost);
+                    loadData();
+                }
+
+                @Override
+                public void onApprovedForPublish(Post approvedPost, SocialPlatform activePlatform) {
+                    if (!isAdded() || approvedPost == null) return;
+                    approvedPost.setStatus(Post.STATUS_PUBLISHED);
+                    approvedPost.setUserApproved(true);
+                    repository.updatePost(approvedPost);
+                    loadData();
+                    Toast.makeText(getContext(), "✅ Đã duyệt & cập nhật bài viết (" + activePlatform.getShortName() + ")!", Toast.LENGTH_SHORT).show();
+                }
+            });
+            dialog.show(getParentFragmentManager(), "HomePreviewDialog");
         });
     }
 

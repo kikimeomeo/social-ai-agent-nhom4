@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "social_ai.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     private static DatabaseHelper instance;
 
@@ -52,9 +52,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "topic TEXT, " +
                 "tone TEXT, " +
                 "content_fb TEXT, " +
+                "content_threads TEXT, " +
                 "content_li TEXT, " +
                 "status TEXT, " +
                 "target_fb INTEGER, " +
+                "target_threads INTEGER DEFAULT 0, " +
                 "target_li INTEGER, " +
                 "created_at INTEGER, " +
                 "image_url TEXT, " +
@@ -115,6 +117,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 2) {
             createThreadsPublicationsTable(db);
         }
+        if (oldVersion < 3) {
+            addColumnIfMissing(db, "posts", "content_threads", "TEXT");
+            addColumnIfMissing(db, "posts", "target_threads", "INTEGER DEFAULT 0");
+        }
+    }
+
+    private static void addColumnIfMissing(SQLiteDatabase db, String table, String columnName, String columnType) {
+        boolean exists = false;
+        try (Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null)) {
+            int nameIdx = cursor.getColumnIndex("name");
+            while (cursor.moveToNext()) {
+                if (nameIdx >= 0 && columnName.equalsIgnoreCase(cursor.getString(nameIdx))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            db.execSQL("ALTER TABLE " + table + " ADD COLUMN " + columnName + " " + columnType);
+        }
     }
 
     public long saveThreadsPublication(
@@ -152,9 +174,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("topic", post.getTopic());
         cv.put("tone", post.getTone());
         cv.put("content_fb", post.getContentFacebook());
+        cv.put("content_threads", post.getContentThreads());
         cv.put("content_li", post.getContentLinkedIn());
         cv.put("status", post.getStatus());
         cv.put("target_fb", post.isTargetFacebook() ? 1 : 0);
+        cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
         cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
         cv.put("created_at", post.getCreatedAt());
         cv.put("image_url", post.getImageUrl());
@@ -163,7 +187,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("likes", post.getLikeCount());
         cv.put("comments", post.getCommentCount());
         cv.put("shares", post.getShareCount());
-        return db.insert("posts", null, cv);
+        long rowId = db.insert("posts", null, cv);
+        if (rowId > 0) {
+            post.setId(rowId);
+        }
+        return rowId;
     }
 
     public List<Post> getAllPosts() {
@@ -177,9 +205,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 post.setTopic(cursor.getString(cursor.getColumnIndexOrThrow("topic")));
                 post.setTone(cursor.getString(cursor.getColumnIndexOrThrow("tone")));
                 post.setContentFacebook(cursor.getString(cursor.getColumnIndexOrThrow("content_fb")));
+                int threadsContentIdx = cursor.getColumnIndex("content_threads");
+                if (threadsContentIdx >= 0) {
+                    post.setContentThreads(cursor.getString(threadsContentIdx));
+                }
                 post.setContentLinkedIn(cursor.getString(cursor.getColumnIndexOrThrow("content_li")));
                 post.setStatus(cursor.getString(cursor.getColumnIndexOrThrow("status")));
                 post.setTargetFacebook(cursor.getInt(cursor.getColumnIndexOrThrow("target_fb")) == 1);
+                int targetThreadsIdx = cursor.getColumnIndex("target_threads");
+                if (targetThreadsIdx >= 0) {
+                    post.setTargetThreads(cursor.getInt(targetThreadsIdx) == 1);
+                }
                 post.setTargetLinkedIn(cursor.getInt(cursor.getColumnIndexOrThrow("target_li")) == 1);
                 post.setCreatedAt(cursor.getLong(cursor.getColumnIndexOrThrow("created_at")));
                 post.setImageUrl(cursor.getString(cursor.getColumnIndexOrThrow("image_url")));
@@ -201,10 +237,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("topic", post.getTopic());
         cv.put("tone", post.getTone());
         cv.put("content_fb", post.getContentFacebook());
+        cv.put("content_threads", post.getContentThreads());
         cv.put("content_li", post.getContentLinkedIn());
         cv.put("status", post.getStatus());
         cv.put("target_fb", post.isTargetFacebook() ? 1 : 0);
+        cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
         cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
+        cv.put("image_url", post.getImageUrl());
+        cv.put("image_prompt", post.getImagePrompt());
         cv.put("reach", post.getReachCount());
         cv.put("likes", post.getLikeCount());
         cv.put("comments", post.getCommentCount());

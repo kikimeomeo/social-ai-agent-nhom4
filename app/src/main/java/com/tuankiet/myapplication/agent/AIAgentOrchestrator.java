@@ -3,9 +3,11 @@ package com.tuankiet.myapplication.agent;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tuankiet.myapplication.data.DatabaseHelper;
@@ -13,6 +15,8 @@ import com.tuankiet.myapplication.data.SecurePreferenceManager;
 import com.tuankiet.myapplication.model.AgentLog;
 import com.tuankiet.myapplication.model.LLMConfig;
 import com.tuankiet.myapplication.model.Post;
+import com.tuankiet.myapplication.model.SocialPlatform;
+import com.tuankiet.myapplication.util.PostIllustrationGenerator;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +47,25 @@ public class AIAgentOrchestrator {
 
     public interface RewriteCallback {
         void onSuccess(String rewrittenText);
+        default void onSuccessWithMeta(String rewrittenText, boolean usedRealLlm, String providerName) {
+            onSuccess(rewrittenText);
+        }
         void onError(String error);
+    }
+
+    public interface ImageGenerationCallback {
+        void onSuccess(PostIllustrationGenerator.GeneratedIllustration illustration);
+        void onError(String error);
+    }
+
+    private static class LlmResponse {
+        final String text;
+        final int totalTokens;
+
+        LlmResponse(String text, int totalTokens) {
+            this.text = text;
+            this.totalTokens = totalTokens;
+        }
     }
 
     public static class SafetyCheckResult {
@@ -75,6 +97,14 @@ public class AIAgentOrchestrator {
             "gemini-2.0-flash",
             "gemini-1.5-flash"
     };
+    private static final String[] GEMINI_IMAGE_MODELS = {
+            "gemini-2.5-flash-image",
+            "gemini-2.0-flash-exp-image-generation"
+    };
+
+    public static final String SYSTEM_PROMPT_VISUAL_AGENT =
+            "You are a Creative Visual Director AI for social media illustrations (Facebook Page 16:9 and Meta Threads 1:1). " +
+            "Your job is to output ONE concise, vivid, aesthetic English image-generation prompt with zero text or watermarks inside the image.";
 
     // Specialized System Prompts for Multi-Agent Architecture (Issue #5)
     public static final String SYSTEM_PROMPT_ORCHESTRATOR =
@@ -240,11 +270,16 @@ public class AIAgentOrchestrator {
 
                 // Step 5: Visual Agent & Packaging
                 notifyStep(callback, 5, "Visual Agent đang tạo prompt & dựng ảnh minh họa...", "Visual Agent");
-                Thread.sleep(500);
                 if (isCancelled) return;
 
-                String imagePrompt = "Modern minimal aesthetic 3D tech illustration for: " + topic + ", 4k cinematic lighting, vibrant indigo & cyan accents";
-                logStep("Visual Agent", "Visual Designer", imagePrompt, "Generated vector placeholder graphic asset.", 240, 0.001);
+                SocialPlatform primaryVisualPlatform = targetFb
+                        ? SocialPlatform.FACEBOOK
+                        : (targetThreads ? SocialPlatform.THREADS : SocialPlatform.LINKEDIN);
+                String primaryVisualContent = targetFb ? fbFull : (targetThreads ? threadsFull : liFull);
+                PostIllustrationGenerator.GeneratedIllustration illustration = generateIllustrationSync(
+                        topic, primaryVisualContent, primaryVisualPlatform, null, 0
+                );
+                if (isCancelled) return;
 
                 // Record token metrics in SecurePreferenceManager
                 int totalNewTokens = fbTokens + threadsTokens + liTokens + 350 + 240;
@@ -252,6 +287,8 @@ public class AIAgentOrchestrator {
                 prefManager.addTokens(totalNewTokens, totalNewCost);
 
                 // Build Final Post & dispatch to Main Thread
+                // CHỐT CHẶN AN TOÀN (F4): Agent LUÔN đóng gói ở trạng thái DRAFT & userApproved = false,
+                // tuyệt đối KHÔNG tự ý đăng bài khi người dùng chưa bấm xác nhận duyệt!
                 Post post = new Post();
                 post.setTopic(topic);
                 post.setTone(tone);
@@ -263,8 +300,10 @@ public class AIAgentOrchestrator {
                 post.setTargetThreads(targetThreads);
                 post.setTargetLinkedIn(targetLi);
                 post.setStatus(Post.STATUS_DRAFT);
-                post.setImageUrl("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe");
-                post.setImagePrompt(imagePrompt);
+                post.setUserApproved(false);
+                post.setImageUrl(illustration.imageUri);
+                post.setImagePrompt(illustration.imagePrompt);
+                post.setImageVariantIndex(illustration.variantIndex);
                 post.setCreatedAt(System.currentTimeMillis());
 
                 mainHandler.post(() -> callback.onCompleted(post));
@@ -332,6 +371,8 @@ public class AIAgentOrchestrator {
                     streamText(newLi, callback, false);
                     currentPost.setContentLinkedIn(newLi);
                 }
+                currentPost.setStatus(Post.STATUS_DRAFT);
+                currentPost.setUserApproved(false);
                 mainHandler.post(() -> callback.onCompleted(currentPost));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onError("Không thể chạy lại: " + e.getMessage()));
@@ -339,44 +380,351 @@ public class AIAgentOrchestrator {
         });
     }
 
-    // --- REWRITE TOOLS ("Ngắn hơn", "Trang trọng hơn", "Đổi Hook") ---
+    // --- REWRITE TOOLS ("Ngắn hơn", "Trang trọng hơn", "Đổi Hook mở đầu") ---
     public void rewriteSection(String currentText, String instructionType, RewriteCallback callback) {
+        rewriteSection(currentText, null, instructionType, SocialPlatform.FACEBOOK, "Tiếng Việt", callback);
+    }
+
+    public void rewriteSection(String fullText,
+                               String selectedSection,
+                               String instructionType,
+                               SocialPlatform platform,
+                               String language,
+                               RewriteCallback callback) {
+        if (callback == null) return;
+        String safeFull = fullText != null ? fullText.trim() : "";
+        if (safeFull.isEmpty()) {
+            mainHandler.post(() -> callback.onError("Nội dung đang trống, vui lòng nhập nội dung trước khi yêu cầu AI viết lại!"));
+            return;
+        }
+
+        final SocialPlatform targetPlatform = platform != null ? platform : SocialPlatform.FACEBOOK;
+        final String safeSelection = (selectedSection != null && !selectedSection.trim().isEmpty())
+                ? selectedSection.trim()
+                : null;
+        final String actionLabel = PostReviewPolicy.getInstructionDisplayName(instructionType);
+
         executorService.execute(() -> {
+            long startMs = System.currentTimeMillis();
             try {
-                Thread.sleep(600); // UI visual feedback
-                String result;
-                if ("SHORTER".equalsIgnoreCase(instructionType)) {
-                    // Make concise: pick first 2-3 lines and summarize
-                    String[] lines = currentText.split("\n");
-                    StringBuilder sb = new StringBuilder();
-                    int count = 0;
-                    for (String line : lines) {
-                        if (!line.trim().isEmpty() && count < 3) {
-                            sb.append(line.trim()).append("\n\n");
-                            count++;
-                        }
+                SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
+                LLMConfig config = prefManager.getConfig();
+                boolean isDemo = config.isDemoMode();
+                String apiKey = config.getApiKey() != null ? config.getApiKey().trim() : "";
+
+                if (!isDemo) {
+                    if (apiKey.isEmpty()) {
+                        mainHandler.post(() -> callback.onError(
+                                "Chưa cấu hình API Key LLM! Vui lòng vào Cài đặt để nhập API Key (" + config.getProvider() + ") hoặc bật Chế độ Demo."
+                        ));
+                        return;
                     }
-                    sb.append("👉 Tóm tắt: Tối ưu hóa thời gian và gia tăng hiệu suất với AI! #SocialAI");
-                    result = sb.toString();
-                } else if ("FORMAL".equalsIgnoreCase(instructionType)) {
-                    // Make formal: executive framing
-                    result = "Kính gửi quý độc giả và đồng nghiệp,\n\n" +
-                            "Chúng tôi xin trân trọng chia sẻ phân tích chiến lược liên quan đến các chuyển dịch gần đây trong ngành:\n\n" +
-                            currentText.replace("🔥", "•").replace("😂", "").replace("chém gió", "thảo luận") +
-                            "\n\nTrân trọng cảm ơn sự theo dõi của quý vị.";
-                } else if ("HOOK".equalsIgnoreCase(instructionType)) {
-                    // Change opening hook
-                    String body = currentText.contains("\n") ? currentText.substring(currentText.indexOf("\n")) : currentText;
-                    result = "🚨 DỪNG LƯỚT 30 GIÂY: Đây là phát hiện quan trọng nhất tuần này mà các kỹ sư phần mềm không nên bỏ lỡ!" + body;
-                } else {
-                    result = currentText;
+
+                    String systemPrompt = PostReviewPolicy.buildRewriteSystemPrompt(targetPlatform);
+                    String userPrompt = PostReviewPolicy.buildRewriteUserPrompt(
+                            safeFull, safeSelection, instructionType, targetPlatform, language
+                    );
+
+                    LlmResponse response = callLlmApiWithMeta(config, userPrompt, systemPrompt);
+                    String rewritten = PostReviewPolicy.sanitizeLlmRewriteOutput(
+                            response.text, targetPlatform, instructionType
+                    );
+                    if (rewritten.isEmpty()) {
+                        mainHandler.post(() -> callback.onError("LLM không trả về nội dung hợp lệ. Vui lòng thử lại!"));
+                        return;
+                    }
+
+                    int tokens = response.totalTokens > 0 ? response.totalTokens : 280;
+                    double cost = tokens * 0.000004;
+                    long durationMs = Math.max(1L, System.currentTimeMillis() - startMs);
+                    logStepWithDuration(
+                            "AI Rewrite: " + actionLabel,
+                            "Copy Editor Agent (" + config.getProvider() + ")",
+                            userPrompt,
+                            rewritten.substring(0, Math.min(120, rewritten.length())),
+                            tokens,
+                            cost,
+                            durationMs
+                    );
+                    prefManager.addTokens(tokens, cost);
+
+                    final String finalOutput = rewritten;
+                    final String provider = config.getProvider();
+                    mainHandler.post(() -> callback.onSuccessWithMeta(finalOutput, true, provider));
+                    return;
                 }
 
-                mainHandler.post(() -> callback.onSuccess(result));
+                // Demo Mode: deterministic smart rewrite (respects Threads <= 500 chars)
+                Thread.sleep(450);
+                String targetInput = (safeSelection != null && !PostReviewPolicy.REWRITE_HOOK.equalsIgnoreCase(instructionType))
+                        ? safeSelection
+                        : safeFull;
+                String demoResult = PostReviewPolicy.rewriteLocallyForDemo(
+                        targetInput, instructionType, targetPlatform, language
+                );
+                long durationMs = Math.max(1L, System.currentTimeMillis() - startMs);
+                logStepWithDuration(
+                        "AI Rewrite (Demo): " + actionLabel,
+                        "Demo Copy Editor",
+                        "[" + targetPlatform.getShortName() + "] " + actionLabel,
+                        demoResult.substring(0, Math.min(120, demoResult.length())),
+                        0,
+                        0.0,
+                        durationMs
+                );
+
+                final String finalDemo = demoResult;
+                mainHandler.post(() -> callback.onSuccessWithMeta(finalDemo, false, "Chế độ Demo"));
             } catch (Exception e) {
-                mainHandler.post(() -> callback.onError("Lỗi khi viết lại: " + e.getMessage()));
+                mainHandler.post(() -> callback.onError(
+                        "Lỗi gọi AI viết lại (" + actionLabel + "): " + e.getMessage()
+                ));
             }
         });
+    }
+
+    // --- VISUAL AGENT: REGENERATE ILLUSTRATION FOR PREVIEW SCREEN (F4 / F2) ---
+    public void regeneratePostImage(String topic,
+                                    String postContent,
+                                    SocialPlatform platform,
+                                    String previousPrompt,
+                                    int nextVariantIndex,
+                                    ImageGenerationCallback callback) {
+        if (callback == null) return;
+        executorService.execute(() -> {
+            try {
+                PostIllustrationGenerator.GeneratedIllustration result = generateIllustrationSync(
+                        topic, postContent, platform, previousPrompt, nextVariantIndex
+                );
+                mainHandler.post(() -> callback.onSuccess(result));
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError("Không thể sinh lại ảnh minh họa: " + e.getMessage()));
+            }
+        });
+    }
+
+    private PostIllustrationGenerator.GeneratedIllustration generateIllustrationSync(String topic,
+                                                                                     String postContent,
+                                                                                     SocialPlatform platform,
+                                                                                     String previousPrompt,
+                                                                                     int variantIndex) {
+        long startMs = System.currentTimeMillis();
+        SocialPlatform safePlatform = platform != null ? platform : SocialPlatform.FACEBOOK;
+        SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
+        LLMConfig config = prefManager.getConfig();
+        boolean useRealApi = !config.isDemoMode()
+                && config.getApiKey() != null
+                && !config.getApiKey().trim().isEmpty();
+
+        // 1. Craft a fresh, distinct visual prompt (real LLM if BYOK configured, fallback otherwise)
+        String fallbackPrompt = PostReviewPolicy.buildFallbackImagePrompt(topic, postContent, safePlatform, variantIndex);
+        String finalImagePrompt = fallbackPrompt;
+        int promptTokens = 0;
+
+        if (useRealApi) {
+            try {
+                String promptReq = PostReviewPolicy.buildImagePromptUserPrompt(
+                        topic, postContent, safePlatform, previousPrompt, variantIndex
+                );
+                LlmResponse promptResp = callLlmApiWithMeta(config, promptReq, SYSTEM_PROMPT_VISUAL_AGENT);
+                finalImagePrompt = PostReviewPolicy.sanitizeImagePromptOutput(promptResp.text, fallbackPrompt);
+                promptTokens = promptResp.totalTokens > 0 ? promptResp.totalTokens : 140;
+            } catch (Exception ignored) {
+                finalImagePrompt = fallbackPrompt;
+            }
+        }
+
+        // 2. Attempt real BYOK AI Image Generation API (Gemini native image / OpenAI Images API)
+        if (useRealApi) {
+            byte[] generatedBytes = null;
+            String imageModelUsed = null;
+            try {
+                if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
+                    ImageApiResult geminiImg = callGeminiImageApi(config.getApiKey(), finalImagePrompt);
+                    if (geminiImg != null) {
+                        generatedBytes = geminiImg.imageBytes;
+                        imageModelUsed = geminiImg.modelName;
+                    }
+                } else if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
+                    ImageApiResult openaiImg = callOpenAiImageApi(config.getApiKey(), finalImagePrompt, safePlatform);
+                    if (openaiImg != null) {
+                        generatedBytes = openaiImg.imageBytes;
+                        imageModelUsed = openaiImg.modelName;
+                    }
+                }
+            } catch (Exception ignored) {
+                generatedBytes = null;
+            }
+
+            if (generatedBytes != null && generatedBytes.length > 128) {
+                String prefix = safePlatform == SocialPlatform.THREADS ? "threads_ai_" : "fb_ai_";
+                String savedUri = PostIllustrationGenerator.saveImageBytes(context, generatedBytes, prefix);
+                if (savedUri != null) {
+                    int totalTokens = promptTokens + 240;
+                    double cost = totalTokens * 0.000004 + 0.015;
+                    long durationMs = Math.max(1L, System.currentTimeMillis() - startMs);
+                    logStepWithDuration(
+                            "Visual Agent (AI Image)",
+                            "Visual Designer (" + imageModelUsed + ")",
+                            finalImagePrompt,
+                            "Generated real AI illustration: " + savedUri,
+                            totalTokens,
+                            cost,
+                            durationMs
+                    );
+                    prefManager.addTokens(totalTokens, cost);
+                    return new PostIllustrationGenerator.GeneratedIllustration(
+                            savedUri,
+                            finalImagePrompt,
+                            "AI Image • " + imageModelUsed,
+                            true,
+                            variantIndex
+                    );
+                }
+            }
+        }
+
+        // 3. Fallback: Render high-resolution channel-sized illustration template directly on-device
+        PostIllustrationGenerator.GeneratedIllustration templateImg =
+                PostIllustrationGenerator.renderTemplateIllustration(
+                        context, topic, postContent, finalImagePrompt, safePlatform, variantIndex
+                );
+
+        long durationMs = Math.max(1L, System.currentTimeMillis() - startMs);
+        double cost = promptTokens * 0.000004;
+        if (promptTokens > 0) {
+            prefManager.addTokens(promptTokens, cost);
+        }
+        logStepWithDuration(
+                "Visual Agent (Regenerate Illustration)",
+                useRealApi ? "Visual Agent (LLM Prompt + Template)" : "Visual Agent (Demo Template)",
+                finalImagePrompt,
+                templateImg.sourceLabel + " -> " + (templateImg.imageUri != null ? templateImg.imageUri : "placeholder"),
+                promptTokens,
+                cost,
+                durationMs
+        );
+        return templateImg;
+    }
+
+    private static class ImageApiResult {
+        final byte[] imageBytes;
+        final String modelName;
+
+        ImageApiResult(byte[] imageBytes, String modelName) {
+            this.imageBytes = imageBytes;
+            this.modelName = modelName;
+        }
+    }
+
+    private ImageApiResult callGeminiImageApi(String apiKey, String imagePrompt) {
+        String cleanKey = apiKey != null ? apiKey.trim().replace("\"", "").replace("'", "") : "";
+        if (cleanKey.isEmpty()) return null;
+
+        for (String model : GEMINI_IMAGE_MODELS) {
+            try {
+                String url = GEMINI_BASE_URL + model + ":generateContent?key=" + cleanKey;
+                JsonObject root = new JsonObject();
+                JsonArray contents = new JsonArray();
+                JsonObject item = new JsonObject();
+                item.addProperty("role", "user");
+                JsonArray parts = new JsonArray();
+                JsonObject textObj = new JsonObject();
+                textObj.addProperty("text", "Generate a clean social media illustration without text overlays: " + imagePrompt);
+                parts.add(textObj);
+                item.add("parts", parts);
+                contents.add(item);
+                root.add("contents", contents);
+
+                JsonObject genConfig = new JsonObject();
+                JsonArray modalities = new JsonArray();
+                modalities.add("TEXT");
+                modalities.add("IMAGE");
+                genConfig.add("responseModalities", modalities);
+                root.add("generationConfig", genConfig);
+
+                Request req = new Request.Builder()
+                        .url(url)
+                        .post(RequestBody.create(root.toString(), JSON_MEDIA))
+                        .build();
+
+                try (Response resp = httpClient.newCall(req).execute()) {
+                    if (resp.isSuccessful() && resp.body() != null) {
+                        String json = resp.body().string();
+                        JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
+                        if (parsed.has("candidates") && parsed.getAsJsonArray("candidates").size() > 0) {
+                            JsonObject contentObj = parsed.getAsJsonArray("candidates")
+                                    .get(0).getAsJsonObject()
+                                    .getAsJsonObject("content");
+                            if (contentObj != null && contentObj.has("parts")) {
+                                JsonArray respParts = contentObj.getAsJsonArray("parts");
+                                for (JsonElement el : respParts) {
+                                    JsonObject partObj = el.getAsJsonObject();
+                                    JsonObject inlineData = partObj.has("inlineData")
+                                            ? partObj.getAsJsonObject("inlineData")
+                                            : (partObj.has("inline_data") ? partObj.getAsJsonObject("inline_data") : null);
+                                    if (inlineData != null && inlineData.has("data")) {
+                                        String b64 = inlineData.get("data").getAsString();
+                                        byte[] bytes = Base64.decode(b64, Base64.DEFAULT);
+                                        if (bytes != null && bytes.length > 128) {
+                                            return new ImageApiResult(bytes, model);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // Try next image model or fall back to template renderer
+            }
+        }
+        return null;
+    }
+
+    private ImageApiResult callOpenAiImageApi(String apiKey, String imagePrompt, SocialPlatform platform) {
+        String cleanKey = apiKey != null ? apiKey.trim().replace("\"", "").replace("'", "") : "";
+        if (cleanKey.isEmpty()) return null;
+
+        String[] models = {"gpt-image-1", "dall-e-3"};
+        String size = (platform == SocialPlatform.THREADS) ? "1024x1024" : "1792x1024";
+
+        for (String model : models) {
+            try {
+                JsonObject root = new JsonObject();
+                root.addProperty("model", model);
+                root.addProperty("prompt", imagePrompt);
+                root.addProperty("n", 1);
+                root.addProperty("size", "gpt-image-1".equals(model) ? "1024x1024" : size);
+                if (!"gpt-image-1".equals(model)) {
+                    root.addProperty("response_format", "b64_json");
+                }
+
+                Request req = new Request.Builder()
+                        .url("https://api.openai.com/v1/images/generations")
+                        .header("Authorization", "Bearer " + cleanKey)
+                        .post(RequestBody.create(root.toString(), JSON_MEDIA))
+                        .build();
+
+                try (Response resp = httpClient.newCall(req).execute()) {
+                    if (resp.isSuccessful() && resp.body() != null) {
+                        JsonObject parsed = JsonParser.parseString(resp.body().string()).getAsJsonObject();
+                        if (parsed.has("data") && parsed.getAsJsonArray("data").size() > 0) {
+                            JsonObject first = parsed.getAsJsonArray("data").get(0).getAsJsonObject();
+                            if (first.has("b64_json") && !first.get("b64_json").isJsonNull()) {
+                                byte[] bytes = Base64.decode(first.get("b64_json").getAsString(), Base64.DEFAULT);
+                                if (bytes != null && bytes.length > 128) {
+                                    return new ImageApiResult(bytes, model);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // Try next model or fall back cleanly
+            }
+        }
+        return null;
     }
 
     // --- AI AGENT AUTO-REPLY TO SOCIAL COMMENTS (F6) ---
@@ -417,21 +765,8 @@ public class AIAgentOrchestrator {
 
     // --- CONTENT SAFETY & SENSITIVE WORD CHECKER ---
     public SafetyCheckResult checkContentSafety(String content) {
-        if (content == null || content.isEmpty()) {
-            return new SafetyCheckResult(false, null);
-        }
-
-        String lower = content.toLowerCase();
-        if (lower.contains("cam kết 100%") || lower.contains("làm giàu cấp tốc") || lower.contains("chắc chắn kiếm") || lower.contains("hoa hồng khủng")) {
-            return new SafetyCheckResult(true, "CẢNH BÁO NỘI DUNG: Phát hiện cụm từ cam kết lợi nhuận quá mức có thể vi phạm tiêu chuẩn cộng đồng của Facebook & LinkedIn.");
-        }
-
-        if ((lower.contains("theo thống kê") || lower.contains("số liệu chứng minh") || lower.contains("theo nghiên cứu"))
-                && !lower.contains("nguồn") && !lower.contains("trích")) {
-            return new SafetyCheckResult(true, "LƯU Ý: Bài viết có đề cập đến thống kê/nghiên cứu nhưng chưa dẫn nguồn tham chiếu cụ thể.");
-        }
-
-        return new SafetyCheckResult(false, null);
+        PostReviewPolicy.SafetyCheckResult check = PostReviewPolicy.checkPostSafety(content);
+        return new SafetyCheckResult(check.hasWarning, check.warningMessage);
     }
 
     // --- VALIDATE API KEY METHOD ---
@@ -526,9 +861,14 @@ public class AIAgentOrchestrator {
         });
     }
 
-    // --- REAL API CALL VIA OKHTTP (Google Gemini gemini-3.1-flash-lite:generateContent) ---
+    // --- REAL API CALL VIA OKHTTP (Google Gemini / OpenAI / OpenRouter) ---
     private String callLlmApi(LLMConfig config, String prompt, String systemPrompt) throws IOException {
-        lastCallTokens = 0;
+        LlmResponse response = callLlmApiWithMeta(config, prompt, systemPrompt);
+        lastCallTokens = response.totalTokens;
+        return response.text;
+    }
+
+    private LlmResponse callLlmApiWithMeta(LLMConfig config, String prompt, String systemPrompt) throws IOException {
         String cleanApiKey = config.getApiKey() != null ? config.getApiKey().trim().replace("\"", "").replace("'", "") : "";
         if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
             IOException lastEx = null;
@@ -576,20 +916,42 @@ public class AIAgentOrchestrator {
                     if (resp.isSuccessful() && resp.body() != null) {
                         String json = resp.body().string();
                         JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
+                        int tokens = 0;
                         if (parsed.has("usageMetadata")) {
                             JsonObject usage = parsed.getAsJsonObject("usageMetadata");
                             if (usage.has("totalTokenCount")) {
-                                lastCallTokens = usage.get("totalTokenCount").getAsInt();
+                                tokens = usage.get("totalTokenCount").getAsInt();
                             }
                         }
-                        return parsed.getAsJsonArray("candidates")
-                                .get(0).getAsJsonObject()
-                                .getAsJsonObject("content")
-                                .getAsJsonArray("parts")
-                                .get(0).getAsJsonObject()
-                                .get("text").getAsString();
+                        if (parsed.has("candidates") && parsed.getAsJsonArray("candidates").size() > 0) {
+                            JsonObject candidate = parsed.getAsJsonArray("candidates").get(0).getAsJsonObject();
+                            if (candidate.has("content") && candidate.getAsJsonObject("content").has("parts")) {
+                                JsonArray respParts = candidate.getAsJsonObject("content").getAsJsonArray("parts");
+                                StringBuilder textBuilder = new StringBuilder();
+                                for (JsonElement partEl : respParts) {
+                                    JsonObject pObj = partEl.getAsJsonObject();
+                                    if (pObj.has("text") && !pObj.get("text").isJsonNull()) {
+                                        textBuilder.append(pObj.get("text").getAsString());
+                                    }
+                                }
+                                if (textBuilder.length() > 0) {
+                                    return new LlmResponse(textBuilder.toString(), tokens);
+                                }
+                            }
+                        }
+                        lastEx = new IOException("Model " + model + " trả về kết quả trống.");
                     } else {
-                        lastEx = new IOException("Model " + model + " error: HTTP " + resp.code());
+                        String errDetail = "HTTP " + resp.code();
+                        if (resp.body() != null) {
+                            try {
+                                String bodyStr = resp.body().string();
+                                JsonObject errJson = JsonParser.parseString(bodyStr).getAsJsonObject();
+                                if (errJson.has("error") && errJson.getAsJsonObject("error").has("message")) {
+                                    errDetail = errJson.getAsJsonObject("error").get("message").getAsString();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        lastEx = new IOException("Gemini (" + model + "): " + errDetail);
                     }
                 } catch (IOException e) {
                     lastEx = e;
@@ -621,7 +983,7 @@ public class AIAgentOrchestrator {
 
             Request req = new Request.Builder()
                     .url(url)
-                    .header("Authorization", "Bearer " + config.getApiKey().trim())
+                    .header("Authorization", "Bearer " + cleanApiKey)
                     .post(RequestBody.create(root.toString(), JSON_MEDIA))
                     .build();
 
@@ -629,12 +991,27 @@ public class AIAgentOrchestrator {
                 if (resp.isSuccessful() && resp.body() != null) {
                     String json = resp.body().string();
                     JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
-                    return parsed.getAsJsonArray("choices")
+                    int tokens = 0;
+                    if (parsed.has("usage") && parsed.getAsJsonObject("usage").has("total_tokens")) {
+                        tokens = parsed.getAsJsonObject("usage").get("total_tokens").getAsInt();
+                    }
+                    String text = parsed.getAsJsonArray("choices")
                             .get(0).getAsJsonObject()
                             .getAsJsonObject("message")
                             .get("content").getAsString();
+                    return new LlmResponse(text, tokens);
                 } else {
-                    throw new IOException("OpenAI API error code: " + resp.code());
+                    String errDetail = "HTTP " + resp.code();
+                    if (resp.body() != null) {
+                        try {
+                            String bodyStr = resp.body().string();
+                            JsonObject errJson = JsonParser.parseString(bodyStr).getAsJsonObject();
+                            if (errJson.has("error") && errJson.getAsJsonObject("error").has("message")) {
+                                errDetail = errJson.getAsJsonObject("error").get("message").getAsString();
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    throw new IOException(config.getProvider() + " API lỗi: " + errDetail);
                 }
             }
         }
@@ -675,7 +1052,11 @@ public class AIAgentOrchestrator {
     }
 
     private void logStep(String step, String agent, String prompt, String output, int tokens, double cost) {
-        AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, 600);
+        logStepWithDuration(step, agent, prompt, output, tokens, cost, 600);
+    }
+
+    private void logStepWithDuration(String step, String agent, String prompt, String output, int tokens, double cost, long durationMs) {
+        AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, durationMs);
         DatabaseHelper.getInstance(context).insertLog(log);
     }
 
