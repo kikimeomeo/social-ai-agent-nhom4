@@ -76,7 +76,45 @@ public class HomeFragment extends Fragment {
         binding.rvRecentPosts.setAdapter(adapter);
 
         adapter.setOnPostClickListener(post -> {
-            Toast.makeText(getContext(), "Bài viết: " + post.getTopic(), Toast.LENGTH_SHORT).show();
+            StringBuilder msg = new StringBuilder();
+            msg.append("Chủ đề: ").append(post.getTopic()).append("\n");
+            msg.append("Trạng thái: ").append(post.getStatus()).append("\n");
+
+            if (post.getIdempotencyKey() != null && !post.getIdempotencyKey().isEmpty()) {
+                msg.append("Mã chống trùng lặp (Idempotency): ").append(post.getIdempotencyKey()).append("\n");
+            }
+            if (post.getRetryCount() > 0) {
+                msg.append("Số lần retry: ").append(post.getRetryCount()).append("\n");
+            }
+            if (post.getPublishError() != null && !post.getPublishError().isEmpty()) {
+                msg.append("\n⚠️ Chi tiết lỗi: ").append(post.getPublishError()).append("\n");
+            }
+
+            String targetUrl = post.getThreadsPostUrl();
+            if (targetUrl == null || targetUrl.isEmpty()) {
+                targetUrl = post.getFbPostUrl();
+            }
+
+            if (targetUrl != null && !targetUrl.isEmpty()) {
+                msg.append("\n🔗 Đường dẫn gốc: ").append(targetUrl);
+            }
+
+            androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("📋 Thông Tin Bài Viết")
+                    .setMessage(msg.toString());
+
+            final String finalUrl = targetUrl;
+            if (finalUrl != null && (finalUrl.startsWith("http://") || finalUrl.startsWith("https://"))) {
+                builder.setPositiveButton("Mở bài viết gốc", (dialog, which) -> {
+                    try {
+                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(finalUrl)));
+                    } catch (Exception ignored) {}
+                });
+                builder.setNegativeButton("Đóng", null);
+            } else {
+                builder.setPositiveButton("Đóng", null);
+            }
+            builder.show();
         });
     }
 
