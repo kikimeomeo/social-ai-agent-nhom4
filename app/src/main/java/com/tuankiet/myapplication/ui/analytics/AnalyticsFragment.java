@@ -52,10 +52,10 @@ public class AnalyticsFragment extends Fragment {
         binding.tvFbComments.setText(String.format("%,d", data.getFacebookComments()));
         binding.tvFbRate.setText(String.format("%.2f%%", data.getFacebookEngagementRate()));
 
-        binding.tvLiReach.setText(String.format("%,d", data.getLinkedinReach()));
-        binding.tvLiLikes.setText(String.format("%,d", data.getLinkedinLikes()));
-        binding.tvLiComments.setText(String.format("%,d", data.getLinkedinComments()));
-        binding.tvLiRate.setText(String.format("%.2f%%", data.getLinkedinEngagementRate()));
+        binding.tvLiReach.setText(String.format("%,d", data.getThreadsReach()));
+        binding.tvLiLikes.setText(String.format("%,d", data.getThreadsLikes()));
+        binding.tvLiComments.setText(String.format("%,d", data.getThreadsComments()));
+        binding.tvLiRate.setText(String.format("%.2f%%", data.getThreadsEngagementRate()));
 
         // 3. AI Weekly Summary Report
         binding.tvTopPost.setText(data.getTopPerformingPost());

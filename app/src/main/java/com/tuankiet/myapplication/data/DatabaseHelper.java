@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "social_ai.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     private static DatabaseHelper instance;
 
@@ -29,6 +29,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         "permalink TEXT, " +
                         "content TEXT NOT NULL, " +
                         "published_at INTEGER NOT NULL" +
+                        ")"
+        );
+    }
+
+    private static void createAnalyticsHistoryTable(SQLiteDatabase db) {
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS analytics_history (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "timestamp INTEGER NOT NULL, " +
+                        "platform TEXT NOT NULL, " +
+                        "reach INTEGER DEFAULT 0, " +
+                        "likes INTEGER DEFAULT 0, " +
+                        "comments INTEGER DEFAULT 0, " +
+                        "shares INTEGER DEFAULT 0, " +
+                        "follower_count INTEGER DEFAULT 0" +
                         ")"
         );
     }
@@ -104,6 +119,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "duration_ms INTEGER)");
 
         createThreadsPublicationsTable(db);
+        createAnalyticsHistoryTable(db);
     }
 
     @Override
@@ -114,6 +130,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     ) {
         if (oldVersion < 2) {
             createThreadsPublicationsTable(db);
+        }
+        if (oldVersion < 3) {
+            createAnalyticsHistoryTable(db);
         }
     }
 
@@ -351,6 +370,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             cursor.close();
         }
         return empty;
+    }
+
+    public long insertAnalyticsSnapshot(String platform, int reach, int likes, int comments, int shares, int followerCount) {
+        ContentValues cv = new ContentValues();
+        cv.put("timestamp", System.currentTimeMillis());
+        cv.put("platform", platform != null ? platform : "ALL");
+        cv.put("reach", reach);
+        cv.put("likes", likes);
+        cv.put("comments", comments);
+        cv.put("shares", shares);
+        cv.put("follower_count", followerCount);
+        SQLiteDatabase db = getWritableDatabase();
+        return db.insert("analytics_history", null, cv);
     }
 }
 
