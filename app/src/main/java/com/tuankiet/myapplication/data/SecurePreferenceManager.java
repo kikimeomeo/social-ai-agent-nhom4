@@ -17,6 +17,9 @@ public class SecurePreferenceManager {
     private static final String KEY_DEMO_MODE = "key_demo_mode";
     private static final String KEY_TOKENS = "key_tokens";
     private static final String KEY_COST = "key_cost";
+    private static final String KEY_MODEL_POST = "key_model_post";
+    private static final String KEY_MODEL_COMMENT = "key_model_comment";
+    private static final String KEY_MODEL_IMAGE = "key_model_image";
     private static final String LEGACY_ENCRYPTION_PREFIX = "ENC_AES_";
 
     // OAuth Keys
@@ -77,15 +80,25 @@ public class SecurePreferenceManager {
         boolean isDemo = prefs.getBoolean(KEY_DEMO_MODE, true); // Demo mode by default
         int tokens = prefs.getInt(KEY_TOKENS, 12450);
         float cost = prefs.getFloat(KEY_COST, 0.048f);
-        return new LLMConfig(provider, apiKey, isDemo, tokens, cost);
+        String modelPost = prefs.getString(KEY_MODEL_POST, "gemini-3.1-flash-lite");
+        String modelComment = prefs.getString(KEY_MODEL_COMMENT, "gemini-2.5-flash-lite");
+        String modelImage = prefs.getString(KEY_MODEL_IMAGE, "gemini-2.0-flash");
+        return new LLMConfig(provider, apiKey, isDemo, tokens, cost, modelPost, modelComment, modelImage);
     }
 
     public void saveConfig(String provider, String apiKey, boolean isDemoMode) {
+        saveConfig(provider, apiKey, isDemoMode, "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-2.0-flash");
+    }
+
+    public void saveConfig(String provider, String apiKey, boolean isDemoMode, String modelPost, String modelComment, String modelImage) {
         String encryptedKey = encryptSecret(apiKey != null ? apiKey.trim() : "");
         prefs.edit()
                 .putString(KEY_PROVIDER, provider)
                 .putString(KEY_API_KEY, encryptedKey)
                 .putBoolean(KEY_DEMO_MODE, isDemoMode)
+                .putString(KEY_MODEL_POST, modelPost)
+                .putString(KEY_MODEL_COMMENT, modelComment)
+                .putString(KEY_MODEL_IMAGE, modelImage)
                 .apply();
     }
 
