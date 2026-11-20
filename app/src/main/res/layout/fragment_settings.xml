@@ -93,34 +93,83 @@
                                 android:layout_height="wrap_content"
                                 android:ellipsize="end"
                                 android:maxLines="1"
-                                android:text="Chưa xác minh OAuth"
-                                android:textColor="@color/text_muted"
-                                android:textSize="10sp" />
+                                android:text="● Đã kết nối • AI Tech Vietnam"
+                                android:textColor="@color/status_green"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tvSettingsFbCapabilities"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:visibility="gone" />
+                                android:layout_marginTop="2dp"
+                                android:text="Đăng bài • Đọc bình luận • Trả lời • Số liệu F7"
+                                android:textColor="@color/text_muted"
+                                android:textSize="9sp" />
                         </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_soft_pill"
-                            android:backgroundTint="@color/bg_soft_fill"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
-                            android:text="Tạm khóa"
-                            android:textColor="@color/text_muted"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
 
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switchFbConnection"
                             android:layout_width="0dp"
                             android:layout_height="0dp"
                             android:visibility="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnConnectFbOAuth"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="4dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="OAuth"
+                            android:textColor="@color/white"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/primary"
+                            app:cornerRadius="16dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnRefreshFbToken"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_marginHorizontal="4dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Làm mới"
+                            android:textColor="@color/primary_dark"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/bg_soft_fill"
+                            app:cornerRadius="16dp"
+                            app:strokeWidth="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnDisconnectFb"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Ngắt kết nối"
+                            android:textColor="@color/status_red"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="#FEE2E2"
+                            app:cornerRadius="16dp"
+                            app:strokeWidth="0dp" />
                     </LinearLayout>
 
                     <!-- LinkedIn Row (hidden for FB & Threads scope, IDs kept for binding compatibility) -->
@@ -146,29 +195,53 @@
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <TextView
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Threads Token"
-                            android:textColor="@color/text_primary"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
+                            android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/tvSettingsThreadsDesc"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Chưa cấu hình"
-                            android:textColor="@color/text_muted"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Meta Threads"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvSettingsThreadsCapabilities"
+                            <TextView
+                                android:id="@+id/tvSettingsThreadsDesc"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Chưa cấu hình"
+                                android:textColor="@color/text_muted"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvSettingsThreadsCapabilities"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Đăng bài v1.0 • Đọc replies 12s • Trả lời tự động F6 • Lấy permalink"
+                                android:textColor="@color/text_muted"
+                                android:textSize="9sp" />
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnConnectThreadsOAuth"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:visibility="gone" />
+                            android:layout_height="28dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:paddingHorizontal="10dp"
+                            android:text="OAuth"
+                            android:textColor="@color/white"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/primary"
+                            app:cornerRadius="14dp" />
                     </LinearLayout>
 
                     <EditText
@@ -187,40 +260,57 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="6dp"
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnSaveThreadsToken"
                             android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_marginEnd="6dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="4dp"
                             android:layout_weight="1"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:minHeight="0dp"
                             android:text="Lưu Token"
                             android:textColor="@color/white"
-                            android:textSize="11sp"
+                            android:textSize="10sp"
                             android:textStyle="bold"
                             app:backgroundTint="@color/primary"
-                            app:cornerRadius="18dp" />
+                            app:cornerRadius="16dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnRefreshThreadsToken"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_marginHorizontal="4dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Làm mới"
+                            android:textColor="@color/primary_dark"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/bg_soft_fill"
+                            app:cornerRadius="16dp"
+                            app:strokeWidth="0dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnDisconnectThreads"
                             android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_marginStart="6dp"
+                            android:layout_height="32dp"
+                            android:layout_marginStart="4dp"
                             android:layout_weight="1"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:minHeight="0dp"
                             android:text="Ngắt kết nối"
                             android:textColor="@color/primary_dark"
-                            android:textSize="11sp"
+                            android:textSize="10sp"
                             android:textStyle="bold"
                             app:backgroundTint="@color/bg_soft_fill"
-                            app:cornerRadius="18dp"
+                            app:cornerRadius="16dp"
                             app:strokeWidth="0dp" />
                     </LinearLayout>
                 </LinearLayout>
