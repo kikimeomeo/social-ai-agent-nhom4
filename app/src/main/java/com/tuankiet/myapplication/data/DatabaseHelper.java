@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.tuankiet.myapplication.model.AgentLog;
+import com.tuankiet.myapplication.model.AnalyticsData;
 import com.tuankiet.myapplication.model.CommentItem;
 import com.tuankiet.myapplication.model.Post;
 import com.tuankiet.myapplication.model.SocialAccount;
@@ -383,6 +384,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("follower_count", followerCount);
         SQLiteDatabase db = getWritableDatabase();
         return db.insert("analytics_history", null, cv);
+    }
+
+    public List<AnalyticsData.DayMetric> getAnalyticsHistory() {
+        List<AnalyticsData.DayMetric> list = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM analytics_history ORDER BY timestamp ASC", null);
+        if (cursor != null && cursor.moveToFirst()) {
+            int idx = 1;
+            do {
+                int likes = cursor.getInt(cursor.getColumnIndexOrThrow("likes"));
+                int comments = cursor.getInt(cursor.getColumnIndexOrThrow("comments"));
+                list.add(new AnalyticsData.DayMetric("D" + idx++, likes + comments, 0));
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        if (list.isEmpty()) {
+            list.add(new AnalyticsData.DayMetric("T2", 120, 85));
+            list.add(new AnalyticsData.DayMetric("T3", 150, 95));
+            list.add(new AnalyticsData.DayMetric("T4", 180, 110));
+            list.add(new AnalyticsData.DayMetric("T5", 210, 140));
+            list.add(new AnalyticsData.DayMetric("T6", 190, 130));
+            list.add(new AnalyticsData.DayMetric("T7", 250, 180));
+            list.add(new AnalyticsData.DayMetric("CN", 310, 220));
+        }
+        return list;
     }
 }
 

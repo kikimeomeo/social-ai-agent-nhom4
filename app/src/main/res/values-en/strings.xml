@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SocialAI</string>
+    <string name="app_tagline">Mobile AI Agent Social Media Management</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_create">AI Studio</string>
+    <string name="nav_inbox">Inbox</string>
+    <string name="nav_analytics">Analytics</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home Screen -->
+    <string name="home_title">SocialAI Studio</string>
+    <string name="home_subtitle">Your AI personal brand assistant</string>
+    <string name="connected_channels">Active Channels</string>
+    <string name="quick_kpis">This Week\'s KPIs</string>
+    <string name="kpi_posts_created">Posts Created</string>
+    <string name="kpi_engagement">Engagement</string>
+    <string name="kpi_pending_comments">Pending Replies</string>
+    <string name="recent_posts">Recent Posts</string>
+    <string name="view_all">View All</string>
+    <string name="btn_create_post">Create Post with AI</string>
+
+    <!-- Create Post Screen -->
+    <string name="create_title">AI Content Studio</string>
+    <string name="create_step1">Step 1: Idea Input</string>
+    <string name="create_step2">Step 2: AI Pipeline</string>
+    <string name="create_step3">Step 3: Review &amp; Publish</string>
+    <string name="topic_hint">Enter topic, news or idea to share (e.g. 5 AI Trends 2026)...</string>
+    <string name="select_tone">Select Tone:</string>
+    <string name="tone_expert">Expert</string>
+    <string name="tone_humorous">Humorous</string>
+    <string name="tone_friendly">Friendly</string>
+    <string name="target_channels">Publish Channels:</string>
+    <string name="channel_facebook">Facebook Page</string>
+    <string name="channel_threads">Meta Threads</string>
+    <string name="channel_threads_desc">Meta Threads (Short posts ≤ 500 chars &amp; Conversations)</string>
+    <string name="channel_linkedin">LinkedIn</string>
+    <string name="language_selection">Post Language:</string>
+    <string name="lang_vi">Vietnamese</string>
+    <string name="lang_en">English</string>
+    <string name="btn_start_ai">Start AI Generation</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_publish">Publish Now</string>
+    <string name="btn_save_draft">Save Offline Draft</string>
+
+    <!-- Inbox Screen -->
+    <string name="inbox_title">Interaction Inbox</string>
+    <string name="inbox_subtitle">Gather feedback from Facebook &amp; LinkedIn</string>
+    <string name="filter_all">All</string>
+    <string name="filter_facebook">Facebook</string>
+    <string name="filter_linkedin">LinkedIn</string>
+    <string name="badge_praise">Praise</string>
+    <string name="badge_question">Question</string>
+    <string name="badge_negative">Negative / Warning</string>
+    <string name="badge_spam">Spam</string>
+    <string name="ai_suggested_reply">AI Suggested Reply:</string>
+    <string name="safety_alert_title">AI SAFETY WARNING</string>
+    <string name="safety_alert_msg">This comment shows negative sentiment or brand risk. Auto-reply has been locked to prevent misinformation. Please review and reply manually.</string>
+    <string name="btn_send_reply">Send Reply</string>
+
+    <!-- Analytics Screen -->
+    <string name="analytics_title">Growth Analytics</string>
+    <string name="analytics_subtitle">Performance and AI weekly recommendations</string>
+    <string name="chart_header">Last 7 Days Engagement</string>
+    <string name="channel_comparison">Dual-Channel Comparison</string>
+    <string name="col_channel">Channel</string>
+    <string name="col_reach">Reach</string>
+    <string name="col_likes">Likes</string>
+    <string name="col_comments">Comments</string>
+    <string name="col_rate">Rate</string>
+    <string name="ai_weekly_report">AI Weekly Summary Report</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings &amp; BYOK</string>
+    <string name="settings_channels">Social Media Accounts</string>
+    <string name="settings_llm">LLM Configuration (BYOK)</string>
+    <string name="demo_mode">Demo Mode (No Key Required)</string>
+    <string name="demo_mode_desc">Simulate real data and smooth streaming without consuming tokens</string>
+    <string name="llm_provider">LLM Provider</string>
+    <string name="api_key_hint">Enter API Key (e.g. sk-… or AIzaSy…)</string>
+    <string name="btn_save_key">Save Secret Key</string>
+    <string name="token_stats">Cost &amp; Token Monitor</string>
+    <string name="tokens_used">Tokens Consumed:</string>
+    <string name="cost_estimate">Estimated Cost:</string>
+</resources>

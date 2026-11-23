@@ -10,6 +10,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.fragment.app.Fragment;
 
 import com.tuankiet.myapplication.R;
@@ -75,6 +77,13 @@ public class SettingsFragment extends Fragment {
         binding.switchDemoMode.setChecked(config.isDemoMode());
         updateApiKeyInputState(config.isDemoMode());
 
+        String currentLocale = AppCompatDelegate.getApplicationLocales().toLanguageTags();
+        if (currentLocale.contains("en")) {
+            binding.rbEn.setChecked(true);
+        } else {
+            binding.rbVi.setChecked(true);
+        }
+
         if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
             binding.rbOpenAI.setChecked(true);
         } else if (LLMConfig.PROVIDER_OPENROUTER.equalsIgnoreCase(config.getProvider())) {
@@ -129,6 +138,14 @@ public class SettingsFragment extends Fragment {
     }
 
     private void setupListeners() {
+        // Language Listener
+        binding.rgLanguage.setOnCheckedChangeListener((group, checkedId) -> {
+            String langTag = (checkedId == R.id.rbEn) ? "en" : "vi";
+            AppCompatDelegate.setApplicationLocales(
+                LocaleListCompat.forLanguageTags(langTag)
+            );
+        });
+
         // Provider Selection Listener
         binding.rgProvider.setOnCheckedChangeListener((group, checkedId) -> updateHelperLinkText());
 
