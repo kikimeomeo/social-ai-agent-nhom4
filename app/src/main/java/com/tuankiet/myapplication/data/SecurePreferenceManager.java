@@ -9,6 +9,9 @@ import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.util.AesEncryptionUtil;
 
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class SecurePreferenceManager {
     private static final String PREF_NAME = "social_ai_secure_prefs";
@@ -87,7 +90,8 @@ public class SecurePreferenceManager {
     }
 
     public void saveConfig(String provider, String apiKey, boolean isDemoMode) {
-        saveConfig(provider, apiKey, isDemoMode, "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-2.0-flash");
+        LLMConfig current = getConfig();
+        saveConfig(provider, apiKey, isDemoMode, current.getPostGenerationModel(), current.getCommentClassificationModel(), current.getImagePromptModel());
     }
 
     public void saveConfig(String provider, String apiKey, boolean isDemoMode, String modelPost, String modelComment, String modelImage) {
@@ -113,10 +117,45 @@ public class SecurePreferenceManager {
     public void addTokens(int tokens, double cost) {
         int currentTokens = prefs.getInt(KEY_TOKENS, 12450);
         float currentCost = prefs.getFloat(KEY_COST, 0.048f);
+
+        String todayKey = "tokens_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        String todayCostKey = "cost_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        int currentDayTokens = prefs.getInt(todayKey, 3450);
+        float currentDayCost = prefs.getFloat(todayCostKey, 0.012f);
+
+        String monthKey = "tokens_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
+        String monthCostKey = "cost_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
+        int currentMonthTokens = prefs.getInt(monthKey, 14240);
+        float currentMonthCost = prefs.getFloat(monthCostKey, 0.057f);
+
         prefs.edit()
                 .putInt(KEY_TOKENS, currentTokens + tokens)
                 .putFloat(KEY_COST, (float) (currentCost + cost))
+                .putInt(todayKey, currentDayTokens + tokens)
+                .putFloat(todayCostKey, (float) (currentDayCost + cost))
+                .putInt(monthKey, currentMonthTokens + tokens)
+                .putFloat(monthCostKey, (float) (currentMonthCost + cost))
                 .apply();
+    }
+
+    public int getTodayTokens() {
+        String todayKey = "tokens_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        return prefs.getInt(todayKey, 3450);
+    }
+
+    public float getTodayCost() {
+        String todayCostKey = "cost_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        return prefs.getFloat(todayCostKey, 0.012f);
+    }
+
+    public int getThisMonthTokens() {
+        String monthKey = "tokens_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
+        return prefs.getInt(monthKey, 14240);
+    }
+
+    public float getThisMonthCost() {
+        String monthCostKey = "cost_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
+        return prefs.getFloat(monthCostKey, 0.057f);
     }
 
     public void resetTokenStats() {
