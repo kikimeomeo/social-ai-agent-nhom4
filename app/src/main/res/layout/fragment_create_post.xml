@@ -508,7 +508,7 @@
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minHeight="0dp"
-                    android:text="+ Bắt đầu tạo bài viết"
+                    android:text="Bắt đầu tạo bài viết"
                     android:textColor="@color/white"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -540,41 +540,85 @@
                     android:orientation="vertical"
                     android:padding="14dp">
 
+                    <!-- Header: Agent Name + Step Badge (Wide & Spacious, Zero Squeeze) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:orientation="vertical">
 
+                        <!-- Row 1: Step Badge & Multi-agent Indicator -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvStepCounterBadge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_soft_pill"
+                                android:backgroundTint="@color/primary_light"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="4dp"
+                                android:text="Bước 1/6"
+                                android:textColor="@color/primary_dark"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="0dp"
+                                android:layout_height="1dp"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_soft_pill"
+                                android:backgroundTint="#EFF6FF"
+                                android:paddingHorizontal="10dp"
+                                android:paddingVertical="4dp"
+                                android:text="⚡ Multi-Agent Streaming"
+                                android:textColor="@color/primary"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Row 2: Active Agent Name on dedicated 100% full-width line -->
                         <TextView
                             android:id="@+id/tvCurrentAgent"
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
+                            android:layout_marginTop="8dp"
+                            android:singleLine="true"
+                            android:ellipsize="end"
                             android:text="Master Orchestrator"
                             android:textColor="@color/primary"
-                            android:textSize="12sp"
+                            android:textSize="16sp"
                             android:textStyle="bold" />
 
+                        <!-- Row 3: Action Detail on dedicated 100% full-width line -->
                         <TextView
                             android:id="@+id/tvPipelineStatus"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:text="Đang stream..."
-                            android:textColor="@color/text_muted"
-                            android:textSize="11sp" />
+                            android:layout_marginTop="4dp"
+                            android:lineSpacingExtra="2dp"
+                            android:maxLines="3"
+                            android:text="Đang phân tích brief chiến lược..."
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
                     </LinearLayout>
 
                     <ProgressBar
                         android:id="@+id/pbPipeline"
                         style="?android:attr/progressBarStyleHorizontal"
                         android:layout_width="match_parent"
-                        android:layout_height="5dp"
+                        android:layout_height="6dp"
                         android:layout_marginTop="10dp"
-                        android:indeterminate="true"
-                        android:indeterminateTint="@color/primary"
+                        android:max="100"
+                        android:progress="16"
+                        android:progressTint="@color/primary"
                         android:progressBackgroundTint="@color/bg_soft_fill" />
 
                     <androidx.core.widget.NestedScrollView
@@ -584,13 +628,13 @@
                         android:layout_marginTop="10dp"
                         android:layout_weight="1"
                         android:background="@drawable/bg_soft_input"
-                        android:padding="12dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:id="@+id/tvLiveStreamOutput"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:lineSpacingExtra="3dp"
+                            android:lineSpacingExtra="4dp"
                             android:textColor="@color/text_primary"
                             android:textSize="12sp"
                             tools:text="Đang khởi tạo nội dung AI..." />
@@ -598,46 +642,23 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Pipeline Action Controls -->
-            <LinearLayout
+            <!-- Pipeline Action Controls: Wide Cancel Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelPipeline"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_marginTop="12dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCancelPipeline"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="6dp"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minHeight="0dp"
-                    android:text="Huỷ ngang"
-                    android:textColor="@color/primary_dark"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="@color/primary_light"
-                    app:cornerRadius="20dp"
-                    app:strokeWidth="0dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSkipToReview"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minHeight="0dp"
-                    android:text="Chuyển duyệt"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="@color/primary"
-                    app:cornerRadius="20dp" />
-            </LinearLayout>
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:text="Huỷ tạo bài viết"
+                android:textColor="@color/status_red"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/status_red_bg"
+                app:cornerRadius="22dp"
+                app:strokeColor="@color/status_red"
+                app:strokeWidth="1dp" />
         </LinearLayout>
 
         <!-- ================= BƯỚC 3: DUYỆT & ĐĂNG BÀI (REVIEW SCREEN) ================= -->
@@ -875,13 +896,93 @@
                                 </LinearLayout>
                             </com.google.android.material.card.MaterialCardView>
 
-                            <!-- Footer row: Prompt + Char counter -->
+                            <!-- Generated AI Image / Visual Asset Preview -->
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/cardReviewImage"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                app:cardCornerRadius="14dp"
+                                app:cardElevation="0dp"
+                                app:strokeColor="@color/card_stroke"
+                                app:strokeWidth="1dp">
+
+                                <FrameLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content">
+
+                                    <ImageView
+                                        android:id="@+id/ivReviewImage"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:adjustViewBounds="true"
+                                        android:contentDescription="Ảnh minh họa bài viết"
+                                        android:maxHeight="260dp"
+                                        android:scaleType="centerCrop" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRemoveImage"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="30dp"
+                                        android:layout_gravity="top|end"
+                                        android:layout_margin="10dp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp"
+                                        android:minHeight="0dp"
+                                        android:paddingHorizontal="10dp"
+                                        android:text="✕ Bỏ ảnh"
+                                        android:textColor="@color/white"
+                                        android:textSize="11sp"
+                                        android:textStyle="bold"
+                                        app:backgroundTint="#B30F172A"
+                                        app:cornerRadius="15dp"
+                                        app:strokeWidth="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRegenerateImage"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="32dp"
+                                        android:layout_gravity="bottom|end"
+                                        android:layout_margin="10dp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp"
+                                        android:minHeight="0dp"
+                                        android:paddingHorizontal="10dp"
+                                        android:text="🔄 Đổi ảnh khác"
+                                        android:textColor="@color/white"
+                                        android:textSize="11sp"
+                                        android:textStyle="bold"
+                                        app:backgroundTint="#CC0284C7"
+                                        app:cornerRadius="16dp"
+                                        app:strokeWidth="0dp" />
+                                </FrameLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <!-- Footer row: Prompt + Restore Image + Char counter -->
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="8dp"
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnRestoreImage"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="28dp"
+                                    android:layout_marginEnd="8dp"
+                                    android:insetTop="0dp"
+                                    android:insetBottom="0dp"
+                                    android:minHeight="0dp"
+                                    android:paddingHorizontal="10dp"
+                                    android:text="🖼️ Thêm ảnh AI"
+                                    android:textColor="@color/primary_dark"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold"
+                                    android:visibility="gone"
+                                    app:backgroundTint="@color/bg_soft_fill"
+                                    app:cornerRadius="14dp"
+                                    app:strokeWidth="0dp" />
 
                                 <TextView
                                     android:id="@+id/tvImagePromptPreview"

@@ -193,5 +193,22 @@ public class AnalyticsData implements Serializable {
         int totalInteractions = getTotalLikes() + getTotalComments();
         return ((double) totalInteractions / totalReach) * 100.0;
     }
+
+    // --- ALIAS METHODS FOR THREADS CHANNEL (F7/F9 COMPATIBILITY) ---
+    public int getThreadsReach() {
+        return linkedinReach;
+    }
+
+    public int getThreadsLikes() {
+        return linkedinLikes;
+    }
+
+    public int getThreadsComments() {
+        return linkedinComments;
+    }
+
+    public double getThreadsEngagementRate() {
+        return linkedinEngagementRate;
+    }
 }
 
