@@ -177,7 +177,7 @@ public class AIAgentOrchestrator {
                     String fbPrompt = buildFacebookUserPrompt(topic, tone, language);
                     if (useRealApi) {
                         try {
-                            fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT);
+                            fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT, config.getPostGenerationModel());
                             fbTokens = lastCallTokens > 0 ? lastCallTokens : 580;
                         } catch (Exception ex) {
                             // Fallback to local draft
@@ -200,7 +200,7 @@ public class AIAgentOrchestrator {
                     String threadsPrompt = buildThreadsUserPrompt(topic, tone, language);
                     if (useRealApi) {
                         try {
-                            threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT);
+                            threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT, config.getPostGenerationModel());
                             threadsTokens = lastCallTokens > 0 ? lastCallTokens : 420;
                         } catch (Exception ex) {
                             threadsFull = generateThreadsDraft(topic, tone, language);
@@ -222,7 +222,7 @@ public class AIAgentOrchestrator {
                     String liPrompt = buildLinkedInUserPrompt(topic, tone);
                     if (useRealApi) {
                         try {
-                            liFull = callLlmApi(config, liPrompt, SYSTEM_PROMPT_LINKEDIN_AGENT);
+                            liFull = callLlmApi(config, liPrompt, SYSTEM_PROMPT_LINKEDIN_AGENT, config.getPostGenerationModel());
                             liTokens = lastCallTokens > 0 ? lastCallTokens : 720;
                         } catch (Exception ex) {
                             liFull = generateLinkedInDraft(topic, tone, language);
@@ -294,7 +294,7 @@ public class AIAgentOrchestrator {
                     String newFb;
                     if (useRealApi) {
                         try {
-                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_FACEBOOK_AGENT);
+                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_FACEBOOK_AGENT, config.getPostGenerationModel());
                         } catch (Exception ex) {
                             newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
@@ -308,7 +308,7 @@ public class AIAgentOrchestrator {
                     String newThreads;
                     if (useRealApi) {
                         try {
-                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_THREADS_AGENT);
+                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_THREADS_AGENT, config.getPostGenerationModel());
                         } catch (Exception ex) {
                             newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
@@ -322,7 +322,7 @@ public class AIAgentOrchestrator {
                     String newLi;
                     if (useRealApi) {
                         try {
-                            newLi = callLlmApi(config, buildLinkedInUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_LINKEDIN_AGENT);
+                            newLi = callLlmApi(config, buildLinkedInUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_LINKEDIN_AGENT, config.getPostGenerationModel());
                         } catch (Exception ex) {
                             newLi = generateLinkedInDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
@@ -393,7 +393,7 @@ public class AIAgentOrchestrator {
                 String prompt = "Bài viết gốc: \"" + postText + "\"\n" +
                         "Người bình luận @" + commenterUsername + " viết: \"" + commentText + "\"\n" +
                         "Hãy viết câu trả lời phù hợp nhất:";
-                String aiReply = callLlmApi(config, prompt, systemPrompt).trim();
+                String aiReply = callLlmApi(config, prompt, systemPrompt, config.getCommentClassificationModel()).trim();
                 if (aiReply.startsWith("\"") && aiReply.endsWith("\"") && aiReply.length() > 2) {
                     aiReply = aiReply.substring(1, aiReply.length() - 1).trim();
                 }
@@ -526,14 +526,31 @@ public class AIAgentOrchestrator {
         });
     }
 
-    // --- REAL API CALL VIA OKHTTP (Google Gemini gemini-3.1-flash-lite:generateContent) ---
+    // --- REAL API CALL VIA OKHTTP ---
     private String callLlmApi(LLMConfig config, String prompt, String systemPrompt) throws IOException {
+        return callLlmApi(config, prompt, systemPrompt, config.getPostGenerationModel());
+    }
+
+    private String callLlmApi(LLMConfig config, String prompt, String systemPrompt, String preferredModel) throws IOException {
         lastCallTokens = 0;
         String cleanApiKey = config.getApiKey() != null ? config.getApiKey().trim().replace("\"", "").replace("'", "") : "";
         if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
             IOException lastEx = null;
 
-            for (String model : GEMINI_FALLBACK_MODELS) {
+            String[] modelsToTry;
+            if (preferredModel != null && !preferredModel.trim().isEmpty()) {
+                modelsToTry = new String[] {
+                    preferredModel,
+                    PRIMARY_GEMINI_MODEL,
+                    "gemini-2.5-flash-lite",
+                    "gemini-2.0-flash",
+                    "gemini-1.5-flash"
+                };
+            } else {
+                modelsToTry = GEMINI_FALLBACK_MODELS;
+            }
+
+            for (String model : modelsToTry) {
                 String url = GEMINI_BASE_URL + model + ":generateContent?key=" + cleanApiKey;
 
                 JsonObject root = new JsonObject();
@@ -604,7 +621,8 @@ public class AIAgentOrchestrator {
                     "https://api.openai.com/v1/chat/completions";
 
             JsonObject root = new JsonObject();
-            root.addProperty("model", "gpt-4o-mini");
+            String modelToUse = (preferredModel != null && !preferredModel.trim().isEmpty()) ? preferredModel : "gpt-4o-mini";
+            root.addProperty("model", modelToUse);
             JsonArray msgs = new JsonArray();
 
             JsonObject sys = new JsonObject();
