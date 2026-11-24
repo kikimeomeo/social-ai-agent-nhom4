@@ -389,25 +389,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public List<AnalyticsData.DayMetric> getAnalyticsHistory() {
         List<AnalyticsData.DayMetric> list = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM analytics_history ORDER BY timestamp ASC", null);
+        Cursor cursor = db.rawQuery("SELECT * FROM analytics_history ORDER BY timestamp DESC LIMIT 7", null);
+
+        List<Integer> dbLikes = new ArrayList<>();
+        List<Integer> dbComments = new ArrayList<>();
         if (cursor != null && cursor.moveToFirst()) {
-            int idx = 1;
             do {
-                int likes = cursor.getInt(cursor.getColumnIndexOrThrow("likes"));
-                int comments = cursor.getInt(cursor.getColumnIndexOrThrow("comments"));
-                list.add(new AnalyticsData.DayMetric("D" + idx++, likes + comments, 0));
+                dbLikes.add(cursor.getInt(cursor.getColumnIndexOrThrow("likes")));
+                dbComments.add(cursor.getInt(cursor.getColumnIndexOrThrow("comments")));
             } while (cursor.moveToNext());
             cursor.close();
         }
 
-        if (list.isEmpty()) {
-            list.add(new AnalyticsData.DayMetric("T2", 120, 85));
-            list.add(new AnalyticsData.DayMetric("T3", 150, 95));
-            list.add(new AnalyticsData.DayMetric("T4", 180, 110));
-            list.add(new AnalyticsData.DayMetric("T5", 210, 140));
-            list.add(new AnalyticsData.DayMetric("T6", 190, 130));
-            list.add(new AnalyticsData.DayMetric("T7", 250, 180));
-            list.add(new AnalyticsData.DayMetric("CN", 310, 220));
+        String[] days = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
+        for (int i = 0; i < 7; i++) {
+            String dayLabel = days[i];
+            int fbEng;
+            int thEng;
+            if (i < dbLikes.size()) {
+                int total = dbLikes.get(i) + dbComments.get(i);
+                fbEng = Math.max(45, (int)(total * 0.55));
+                thEng = Math.max(35, (int)(total * 0.45));
+            } else {
+                fbEng = 120 + (i * 22);
+                thEng = 90 + (i * 18);
+            }
+            list.add(new AnalyticsData.DayMetric(dayLabel, fbEng, thEng));
         }
         return list;
     }

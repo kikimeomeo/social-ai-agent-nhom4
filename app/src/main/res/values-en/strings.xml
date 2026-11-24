@@ -36,7 +36,7 @@
     <string name="channel_facebook">Facebook Page</string>
     <string name="channel_threads">Meta Threads</string>
     <string name="channel_threads_desc">Meta Threads (Short posts ≤ 500 chars &amp; Conversations)</string>
-    <string name="channel_linkedin">LinkedIn</string>
+    <string name="channel_linkedin">Threads</string>
     <string name="language_selection">Post Language:</string>
     <string name="lang_vi">Vietnamese</string>
     <string name="lang_en">English</string>
@@ -47,10 +47,10 @@
 
     <!-- Inbox Screen -->
     <string name="inbox_title">Interaction Inbox</string>
-    <string name="inbox_subtitle">Gather feedback from Facebook &amp; LinkedIn</string>
+    <string name="inbox_subtitle">Gather feedback from Facebook &amp; Threads</string>
     <string name="filter_all">All</string>
     <string name="filter_facebook">Facebook</string>
-    <string name="filter_linkedin">LinkedIn</string>
+    <string name="filter_linkedin">Threads</string>
     <string name="badge_praise">Praise</string>
     <string name="badge_question">Question</string>
     <string name="badge_negative">Negative / Warning</string>
