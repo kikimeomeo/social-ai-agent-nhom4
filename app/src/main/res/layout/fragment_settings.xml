@@ -45,6 +45,56 @@
             android:orientation="vertical"
             android:paddingBottom="24dp">
 
+            <!-- Card: Đa ngôn ngữ (App Language) -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/SocialCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ngôn ngữ ứng dụng (App Language)"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <RadioGroup
+                        android:id="@+id/rgLanguage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <RadioButton
+                            android:id="@+id/rbVi"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_weight="1"
+                            android:checked="true"
+                            android:text="Tiếng Việt (VI)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11sp" />
+
+                        <RadioButton
+                            android:id="@+id/rbEn"
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_weight="1"
+                            android:text="English (EN)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11sp" />
+                    </RadioGroup>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Card 1: Quản lý tài khoản MXH -->
             <com.google.android.material.card.MaterialCardView
                 style="@style/SocialCard"
