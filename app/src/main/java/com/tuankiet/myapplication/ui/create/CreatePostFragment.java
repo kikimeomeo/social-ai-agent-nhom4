@@ -54,6 +54,11 @@ public class CreatePostFragment extends Fragment {
         setupStep2();
         setupStep3();
 
+        if (binding.btnOpenAgentLogs != null) {
+            binding.btnOpenAgentLogs.setOnClickListener(v ->
+                    com.tuankiet.myapplication.ui.logs.AgentLogsBottomSheet.show(requireContext(), getLayoutInflater()));
+        }
+
         binding.tvStepLabel1.setOnClickListener(v -> goToStep(1));
         binding.tvStepLabel3.setOnClickListener(v -> {
             if (currentPost != null) {
@@ -568,26 +573,7 @@ public class CreatePostFragment extends Fragment {
                     // Lập lịch Worker chạy nền: 12 giây sau sẽ tự động nhận comment mới & Bot tự động phản hồi (F6)
                     com.tuankiet.myapplication.worker.CommentSyncWorker.scheduleSimulatedSync(requireContext(), 12);
 
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Agent đã tự động xuất bản đồng thời lên các kênh mạng xã hội kết nối:\n\n");
-                    if (currentPost.isTargetFacebook()) {
-                        sb.append("• Facebook Page: ✅ ĐÃ ĐĂNG THÀNH CÔNG\n  URL: https://facebook.com/socialai/posts/").append(System.currentTimeMillis() % 100000).append("\n\n");
-                    }
-                    if (currentPost.isTargetLinkedIn()) {
-                        sb.append("• LinkedIn Profile: ✅ ĐÃ ĐĂNG THÀNH CÔNG\n  URL: https://linkedin.com/feed/update/urn:li:activity:").append(System.currentTimeMillis() % 100000).append("\n\n");
-                    }
-                    sb.append("Bài viết đã được lưu vết và bắt đầu theo dõi tăng trưởng, tương tác & comment!");
-
-                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("🎉 Xuất Bản Tự Động Thành Công (F5)")
-                            .setMessage(sb.toString())
-                            .setPositiveButton("Xem trên trang Tổng quan", (dialog, which) -> {
-                                if (getActivity() instanceof MainActivity) {
-                                    ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
-                                }
-                            })
-                            .setCancelable(false)
-                            .show();
+                    showPublishSuccessBottomSheet(currentPost);
                 } else {
                     currentPost.setStatus(Post.STATUS_PENDING);
                     MockDataRepository.getInstance(requireContext()).addPost(currentPost);
@@ -836,6 +822,71 @@ public class CreatePostFragment extends Fragment {
         });
 
         metaDialog.show();
+    }
+
+    private void showPublishSuccessBottomSheet(Post post) {
+        if (!isAdded() || getContext() == null || post == null) return;
+
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(requireContext());
+        com.tuankiet.myapplication.databinding.DialogPublishSuccessBinding dialogBinding =
+                com.tuankiet.myapplication.databinding.DialogPublishSuccessBinding.inflate(getLayoutInflater());
+        dialog.setContentView(dialogBinding.getRoot());
+
+        long randSeed = System.currentTimeMillis() % 100000;
+
+        // Facebook
+        if (post.isTargetFacebook()) {
+            dialogBinding.cardSuccessFacebook.setVisibility(View.VISIBLE);
+            dialogBinding.tvSuccessFacebookUrl.setText("https://facebook.com/socialai/posts/" + randSeed);
+            dialogBinding.tvSuccessFacebookUrl.setOnClickListener(v -> {
+                try {
+                    Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(dialogBinding.tvSuccessFacebookUrl.getText().toString()));
+                    startActivity(browser);
+                } catch (Exception ignored) {}
+            });
+        } else {
+            dialogBinding.cardSuccessFacebook.setVisibility(View.GONE);
+        }
+
+        // Threads
+        if (post.isTargetThreads()) {
+            dialogBinding.cardSuccessThreads.setVisibility(View.VISIBLE);
+            dialogBinding.tvSuccessThreadsUrl.setText("https://threads.net/@socialai/post/" + (randSeed + 12));
+            dialogBinding.tvSuccessThreadsUrl.setOnClickListener(v -> {
+                try {
+                    Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(dialogBinding.tvSuccessThreadsUrl.getText().toString()));
+                    startActivity(browser);
+                } catch (Exception ignored) {}
+            });
+        } else {
+            dialogBinding.cardSuccessThreads.setVisibility(View.GONE);
+        }
+
+        // LinkedIn
+        if (post.isTargetLinkedIn()) {
+            dialogBinding.cardSuccessLinkedIn.setVisibility(View.VISIBLE);
+            dialogBinding.tvSuccessLinkedInUrl.setText("https://linkedin.com/feed/update/urn:li:activity:" + (randSeed + 55));
+            dialogBinding.tvSuccessLinkedInUrl.setOnClickListener(v -> {
+                try {
+                    Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(dialogBinding.tvSuccessLinkedInUrl.getText().toString()));
+                    startActivity(browser);
+                } catch (Exception ignored) {}
+            });
+        } else {
+            dialogBinding.cardSuccessLinkedIn.setVisibility(View.GONE);
+        }
+
+        dialogBinding.btnSuccessGoDashboard.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+            }
+        });
+
+        dialogBinding.btnSuccessDismiss.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     @Override

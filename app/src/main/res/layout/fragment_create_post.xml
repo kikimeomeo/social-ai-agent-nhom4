@@ -43,6 +43,23 @@
                     android:background="@drawable/bg_soft_underline" />
             </LinearLayout>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenAgentLogs"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_marginEnd="8dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:paddingHorizontal="10dp"
+                android:text="📜 Nhật ký"
+                android:textColor="@color/primary_dark"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/bg_soft_fill"
+                app:cornerRadius="14dp"
+                app:strokeWidth="0dp" />
+
             <TextView
                 android:id="@+id/tvStepCounter"
                 android:layout_width="wrap_content"
