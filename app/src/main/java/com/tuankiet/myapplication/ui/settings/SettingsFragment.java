@@ -6,10 +6,15 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.fragment.app.Fragment;
 
 import com.tuankiet.myapplication.R;
@@ -44,8 +49,40 @@ public class SettingsFragment extends Fragment {
         prefManager = SecurePreferenceManager.getInstance(requireContext());
         repository = MockDataRepository.getInstance(requireContext());
 
+        setupSpinners();
         loadSettings();
         setupListeners();
+    }
+
+    private void setupSpinners() {
+        String[] models = new String[] {
+            "gemini-3.1-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "anthropic/claude-3.5-sonnet",
+            "deepseek/deepseek-chat"
+        };
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            requireContext(), android.R.layout.simple_spinner_item, models
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.spnModelPost.setAdapter(adapter);
+        binding.spnModelComment.setAdapter(adapter);
+        binding.spnModelImage.setAdapter(adapter);
+    }
+
+    private void setSpinnerSelection(Spinner spinner, String value) {
+        if (value == null) return;
+        SpinnerAdapter adapter = spinner.getAdapter();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            if (value.equals(adapter.getItem(i))) {
+                spinner.setSelection(i);
+                break;
+            }
+        }
     }
 
     public void loadSettings() {
@@ -64,6 +101,16 @@ public class SettingsFragment extends Fragment {
         LLMConfig config = prefManager.getConfig();
         binding.switchDemoMode.setChecked(config.isDemoMode());
         updateApiKeyInputState(config.isDemoMode());
+
+        setSpinnerSelection(binding.spnModelPost, config.getPostGenerationModel());
+        setSpinnerSelection(binding.spnModelComment, config.getCommentClassificationModel());
+        setSpinnerSelection(binding.spnModelImage, config.getImagePromptModel());
+        String currentLocale = AppCompatDelegate.getApplicationLocales().toLanguageTags();
+        if (currentLocale.contains("en")) {
+            binding.rbEn.setChecked(true);
+        } else {
+            binding.rbVi.setChecked(true);
+        }
 
         if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
             binding.rbOpenAI.setChecked(true);
@@ -114,11 +161,21 @@ public class SettingsFragment extends Fragment {
     }
 
     private void updateTokenMetrics(LLMConfig config) {
-        binding.tvTotalTokens.setText(String.format("%,d", config.getTotalTokensUsed()));
+        binding.tvTotalTokens.setText(String.format("%,d tokens", config.getTotalTokensUsed()));
         binding.tvTotalCost.setText(String.format("$%.4f USD", config.getTotalCostUsd()));
+        binding.tvTodayTokens.setText(String.format("%,d tokens ($%.4f)", prefManager.getTodayTokens(), prefManager.getTodayCost()));
+        binding.tvMonthTokens.setText(String.format("%,d tokens ($%.4f)", prefManager.getThisMonthTokens(), prefManager.getThisMonthCost()));
     }
 
     private void setupListeners() {
+        // Language Listener
+        binding.rgLanguage.setOnCheckedChangeListener((group, checkedId) -> {
+            String langTag = (checkedId == R.id.rbEn) ? "en" : "vi";
+            AppCompatDelegate.setApplicationLocales(
+                LocaleListCompat.forLanguageTags(langTag)
+            );
+        });
+
         // Provider Selection Listener
         binding.rgProvider.setOnCheckedChangeListener((group, checkedId) -> updateHelperLinkText());
 
@@ -282,7 +339,11 @@ public class SettingsFragment extends Fragment {
                     binding.etApiKey.getText().toString().trim() : "";
             boolean isDemo = binding.switchDemoMode.isChecked();
 
-            prefManager.saveConfig(provider, apiKey, isDemo);
+            String modelPost = binding.spnModelPost.getSelectedItem() != null ? binding.spnModelPost.getSelectedItem().toString() : "gemini-3.1-flash-lite";
+            String modelComment = binding.spnModelComment.getSelectedItem() != null ? binding.spnModelComment.getSelectedItem().toString() : "gemini-2.5-flash-lite";
+            String modelImage = binding.spnModelImage.getSelectedItem() != null ? binding.spnModelImage.getSelectedItem().toString() : "gemini-2.0-flash";
+
+            prefManager.saveConfig(provider, apiKey, isDemo, modelPost, modelComment, modelImage);
             binding.tvApiKeyStatus.setVisibility(View.VISIBLE);
             if (isDemo) {
                 binding.tvApiKeyStatus.setText("Trạng thái Key: Đang hoạt động ở Chế độ Demo (Giả lập)");
