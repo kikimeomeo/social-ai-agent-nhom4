@@ -336,4 +336,12 @@ public class SecurePreferenceManager {
                 .remove(KEY_THREADS_USERNAME)
                 .apply();
     }
+
+    public void saveFacebookPageId(String pageId) {
+        prefs.edit().putString(KEY_FB_PAGE_ID, pageId != null ? pageId.trim() : "").apply();
+    }
+
+    public void saveThreadsUserId(String userId) {
+        prefs.edit().putString(KEY_THREADS_USER_ID, userId != null ? userId.trim() : "me").apply();
+    }
 }
