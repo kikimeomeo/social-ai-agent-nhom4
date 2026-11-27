@@ -725,4 +725,203 @@ public class RealSocialPublisher {
             }
         });
     }
+
+    // ==========================================
+    // F5: SYNCHRONOUS METHODS FOR WORKMANAGER
+    // ==========================================
+
+    public static class PublishResult {
+        public final boolean success;
+        public final String postUrl;
+        public final String postId;
+        public final String errorMessage;
+        public final boolean isRetryable;
+
+        public PublishResult(boolean success, String postUrl, String postId, String errorMessage, boolean isRetryable) {
+            this.success = success;
+            this.postUrl = postUrl;
+            this.postId = postId;
+            this.errorMessage = errorMessage;
+            this.isRetryable = isRetryable;
+        }
+
+        public static PublishResult success(String postUrl, String postId) {
+            return new PublishResult(true, postUrl, postId, null, false);
+        }
+
+        public static PublishResult retryable(String errorMessage) {
+            return new PublishResult(false, null, null, errorMessage, true);
+        }
+
+        public static PublishResult failure(String errorMessage) {
+            return new PublishResult(false, null, null, errorMessage, false);
+        }
+    }
+
+    public static PublishResult postToFacebookPageSync(String pageId, String pageAccessToken, String message) {
+        if (pageId == null || pageId.trim().isEmpty() || pageAccessToken == null || pageAccessToken.trim().isEmpty()) {
+            return PublishResult.failure("Thiếu Page ID hoặc Facebook Page Access Token!");
+        }
+
+        String url = "https://graph.facebook.com/v19.0/" + pageId.trim() + "/feed";
+        RequestBody body = new FormBody.Builder()
+                .add("message", message != null ? message : "")
+                .add("access_token", pageAccessToken.trim())
+                .build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful() && response.body() != null) {
+                String json = response.body().string();
+                JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+                String postId = obj.has("id") ? obj.get("id").getAsString() : "";
+                String postUrl = "https://www.facebook.com/" + postId;
+                return PublishResult.success(postUrl, postId);
+            } else {
+                int code = response.code();
+                String errBody = response.body() != null ? response.body().string() : "";
+                if (code == 429 || errBody.contains("rate limit") || errBody.contains("too many requests") || code >= 500) {
+                    return PublishResult.retryable("Facebook API giới hạn tần suất hoặc máy chủ bận (HTTP " + code + "): " + errBody);
+                } else if (code == 401 || code == 403 || errBody.contains("OAuthException") || errBody.contains("permission")) {
+                    return PublishResult.failure("Lỗi xác thực Facebook (HTTP " + code + "): Token hết hạn hoặc thiếu quyền. " + errBody);
+                } else if (errBody.contains("policy") || errBody.contains("violation") || errBody.contains("blocked")) {
+                    return PublishResult.failure("Nội dung vi phạm chính sách của Facebook: " + errBody);
+                } else {
+                    return PublishResult.failure("Meta Graph API từ chối (HTTP " + code + "): " + errBody);
+                }
+            }
+        } catch (IOException e) {
+            return PublishResult.retryable("Lỗi kết nối mạng khi đăng lên Facebook: " + e.getMessage());
+        } catch (Exception e) {
+            return PublishResult.failure("Lỗi xử lý phản hồi Facebook: " + e.getMessage());
+        }
+    }
+
+    public static PublishResult postToThreadsSync(String threadsUserId, String accessToken, String text) {
+        if (accessToken == null || accessToken.trim().isEmpty()) {
+            return PublishResult.failure("Thiếu Threads Access Token!");
+        }
+
+        final String cleanToken = accessToken.trim();
+        final String safeText = (text != null && text.length() > 490)
+                ? text.substring(0, 487) + "..."
+                : (text != null ? text : "");
+
+        String userId = (threadsUserId == null || threadsUserId.trim().isEmpty()) ? "me" : threadsUserId.trim();
+
+        try {
+            if (!userId.matches("\\d+")) {
+                String meUrl = "https://graph.threads.net/v1.0/me?fields=id,username&access_token=" + Uri.encode(cleanToken);
+                Request meReq = new Request.Builder().url(meUrl).get().build();
+                try (Response meResp = client.newCall(meReq).execute()) {
+                    if (meResp.isSuccessful() && meResp.body() != null) {
+                        JsonObject obj = JsonParser.parseString(meResp.body().string()).getAsJsonObject();
+                        if (obj.has("id")) {
+                            userId = obj.get("id").getAsString();
+                        }
+                    } else {
+                        int code = meResp.code();
+                        String err = meResp.body() != null ? meResp.body().string() : "";
+                        if (code >= 500) {
+                            return PublishResult.retryable("Máy chủ Threads bận (/me HTTP " + code + "): " + err);
+                        } else {
+                            return PublishResult.failure("Threads Token không hợp lệ hoặc đã hết hạn: " + err);
+                        }
+                    }
+                }
+            }
+
+            String createUrl = "https://graph.threads.net/v1.0/" + userId + "/threads";
+            RequestBody formBody = new FormBody.Builder()
+                    .add("media_type", "TEXT")
+                    .add("text", safeText)
+                    .add("access_token", cleanToken)
+                    .build();
+            Request createReq = new Request.Builder().url(createUrl).post(formBody).build();
+
+            String creationId;
+            try (Response createResp = client.newCall(createReq).execute()) {
+                if (createResp.isSuccessful() && createResp.body() != null) {
+                    JsonObject obj = JsonParser.parseString(createResp.body().string()).getAsJsonObject();
+                    if (obj.has("id")) {
+                        creationId = obj.get("id").getAsString();
+                    } else {
+                        return PublishResult.failure("Threads không trả về creation_id");
+                    }
+                } else {
+                    int code = createResp.code();
+                    String err = createResp.body() != null ? createResp.body().string() : "";
+                    if (code == 429 || code >= 500) {
+                        return PublishResult.retryable("Lỗi kết nối máy chủ Threads khi tạo container (HTTP " + code + "): " + err);
+                    } else if (err.contains("threads_content_publish") || code == 401 || code == 403) {
+                        return PublishResult.failure("Thiếu quyền 'threads_content_publish' hoặc Token không hợp lệ: " + err);
+                    } else {
+                        return PublishResult.failure("Threads API từ chối tạo bài viết (HTTP " + code + "): " + err);
+                    }
+                }
+            }
+
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException ignored) {}
+
+            String publishUrl = "https://graph.threads.net/v1.0/" + userId + "/threads_publish";
+            RequestBody pubBody = new FormBody.Builder()
+                    .add("creation_id", creationId)
+                    .add("access_token", cleanToken)
+                    .build();
+            Request pubReq = new Request.Builder().url(publishUrl).post(pubBody).build();
+
+            String publishedId;
+            try (Response pubResp = client.newCall(pubReq).execute()) {
+                if (pubResp.isSuccessful() && pubResp.body() != null) {
+                    JsonObject obj = JsonParser.parseString(pubResp.body().string()).getAsJsonObject();
+                    if (obj.has("id")) {
+                        publishedId = obj.get("id").getAsString();
+                    } else {
+                        return PublishResult.failure("Threads Publish API không trả về ID bài đăng hợp lệ");
+                    }
+                } else {
+                    int code = pubResp.code();
+                    String err = pubResp.body() != null ? pubResp.body().string() : "";
+                    if (code == 429 || code >= 500) {
+                        return PublishResult.retryable("Lỗi kết nối xuất bản Threads (HTTP " + code + "): " + err);
+                    } else {
+                        return PublishResult.failure("Threads Publish API từ chối: " + err);
+                    }
+                }
+            }
+
+            botPublishedReplyIds.add(publishedId);
+
+            String permalink = "https://www.threads.net/@" + userId + "/post/" + publishedId;
+            try {
+                String linkUrl = "https://graph.threads.net/v1.0/" + Uri.encode(publishedId) + "?fields=id,permalink";
+                Request linkReq = new Request.Builder()
+                        .url(linkUrl)
+                        .header("Authorization", "Bearer " + cleanToken)
+                        .get()
+                        .build();
+                try (Response linkResp = client.newCall(linkReq).execute()) {
+                    if (linkResp.isSuccessful() && linkResp.body() != null) {
+                        JsonObject obj = JsonParser.parseString(linkResp.body().string()).getAsJsonObject();
+                        if (obj.has("permalink") && !obj.get("permalink").isJsonNull()) {
+                            permalink = obj.get("permalink").getAsString();
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            return PublishResult.success(permalink, publishedId);
+
+        } catch (IOException e) {
+            return PublishResult.retryable("Lỗi kết nối mạng khi xuất bản lên Threads: " + e.getMessage());
+        } catch (Exception e) {
+            return PublishResult.failure("Lỗi xử lý Threads API: " + e.getMessage());
+        }
+    }
 }

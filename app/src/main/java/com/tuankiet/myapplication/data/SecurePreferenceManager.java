@@ -35,6 +35,10 @@ public class SecurePreferenceManager {
     private static final String KEY_LI_EXPIRY = "oauth_li_expiry";
 
     private static final String KEY_THREADS_TOKEN = "threads_access_token";
+    private static final String KEY_FB_PAGE_ID = "oauth_fb_page_id";
+    private static final String KEY_FB_PAGE_NAME = "oauth_fb_page_name";
+    private static final String KEY_THREADS_USER_ID = "threads_user_id";
+    private static final String KEY_THREADS_USERNAME = "threads_username";
 
     private final SharedPreferences prefs;
     private static SecurePreferenceManager instance;
@@ -251,5 +255,25 @@ public class SecurePreferenceManager {
         prefs.edit()
                 .remove(KEY_THREADS_TOKEN)
                 .apply();
+    }
+
+    public String getFacebookToken() {
+        return getOAuthToken(SocialPlatform.FACEBOOK);
+    }
+
+    public String getFacebookPageId() {
+        return prefs.getString(KEY_FB_PAGE_ID, "");
+    }
+
+    public void saveFacebookPageId(String pageId) {
+        prefs.edit().putString(KEY_FB_PAGE_ID, pageId != null ? pageId.trim() : "").apply();
+    }
+
+    public String getThreadsUserId() {
+        return prefs.getString(KEY_THREADS_USER_ID, "me");
+    }
+
+    public void saveThreadsUserId(String userId) {
+        prefs.edit().putString(KEY_THREADS_USER_ID, userId != null ? userId.trim() : "me").apply();
     }
 }
