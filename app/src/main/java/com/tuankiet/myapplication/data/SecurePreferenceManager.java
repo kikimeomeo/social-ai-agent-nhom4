@@ -29,14 +29,16 @@ public class SecurePreferenceManager {
     private static final String KEY_FB_TOKEN = "oauth_fb_token";
     private static final String KEY_FB_REFRESH = "oauth_fb_refresh";
     private static final String KEY_FB_EXPIRY = "oauth_fb_expiry";
+    private static final String KEY_FB_PAGE_ID = "oauth_fb_page_id";
+    private static final String KEY_FB_PAGE_NAME = "oauth_fb_page_name";
 
     private static final String KEY_LI_TOKEN = "oauth_li_token";
     private static final String KEY_LI_REFRESH = "oauth_li_refresh";
     private static final String KEY_LI_EXPIRY = "oauth_li_expiry";
 
     private static final String KEY_THREADS_TOKEN = "threads_access_token";
-    private static final String KEY_FB_PAGE_ID = "oauth_fb_page_id";
-    private static final String KEY_FB_PAGE_NAME = "oauth_fb_page_name";
+    private static final String KEY_THREADS_REFRESH = "threads_refresh_token";
+    private static final String KEY_THREADS_EXPIRY = "threads_expiry";
     private static final String KEY_THREADS_USER_ID = "threads_user_id";
     private static final String KEY_THREADS_USERNAME = "threads_username";
 
@@ -170,17 +172,62 @@ public class SecurePreferenceManager {
     }
 
     // --- OAuth 2.0 Token Storage ---
+    public void saveFacebookToken(String pageId, String pageName, String accessToken, long expiresInSeconds) {
+        long expiryTime = System.currentTimeMillis() + (expiresInSeconds * 1000L);
+        prefs.edit()
+                .putString(KEY_FB_TOKEN, encryptSecret(accessToken != null ? accessToken.trim() : ""))
+                .putString(KEY_FB_PAGE_ID, pageId != null ? pageId.trim() : "")
+                .putString(KEY_FB_PAGE_NAME, pageName != null ? pageName.trim() : "")
+                .putLong(KEY_FB_EXPIRY, expiryTime)
+                .apply();
+    }
+
+    public String getFacebookToken() {
+        return decryptSecret(prefs.getString(KEY_FB_TOKEN, ""));
+    }
+
+    public String getFacebookPageId() {
+        return prefs.getString(KEY_FB_PAGE_ID, "");
+    }
+
+    public String getFacebookPageName() {
+        return prefs.getString(KEY_FB_PAGE_NAME, "");
+    }
+
+    public boolean isFacebookTokenExpired() {
+        String token = getFacebookToken();
+        if (token == null || token.trim().isEmpty()) {
+            return true;
+        }
+        long expiry = prefs.getLong(KEY_FB_EXPIRY, 0L);
+        return expiry > 0L && System.currentTimeMillis() >= expiry;
+    }
+
+    public void clearFacebookToken() {
+        prefs.edit()
+                .remove(KEY_FB_TOKEN)
+                .remove(KEY_FB_REFRESH)
+                .remove(KEY_FB_EXPIRY)
+                .remove(KEY_FB_PAGE_ID)
+                .remove(KEY_FB_PAGE_NAME)
+                .apply();
+    }
+
     public void saveOAuthToken(SocialPlatform platform, String accessToken, String refreshToken, long expiresInSeconds) {
         long expiryTime = System.currentTimeMillis() + (expiresInSeconds * 1000L);
         SharedPreferences.Editor editor = prefs.edit();
 
-        String encAccess = encryptSecret(accessToken);
-        String encRefresh = encryptSecret(refreshToken);
+        String encAccess = encryptSecret(accessToken != null ? accessToken.trim() : "");
+        String encRefresh = encryptSecret(refreshToken != null ? refreshToken.trim() : "");
 
         if (platform == SocialPlatform.FACEBOOK) {
             editor.putString(KEY_FB_TOKEN, encAccess);
             editor.putString(KEY_FB_REFRESH, encRefresh);
             editor.putLong(KEY_FB_EXPIRY, expiryTime);
+        } else if (platform == SocialPlatform.THREADS) {
+            editor.putString(KEY_THREADS_TOKEN, encAccess);
+            editor.putString(KEY_THREADS_REFRESH, encRefresh);
+            editor.putLong(KEY_THREADS_EXPIRY, expiryTime);
         } else {
             editor.putString(KEY_LI_TOKEN, encAccess);
             editor.putString(KEY_LI_REFRESH, encRefresh);
@@ -190,87 +237,108 @@ public class SecurePreferenceManager {
     }
 
     public String getOAuthToken(SocialPlatform platform) {
-        String stored = "";
         if (platform == SocialPlatform.FACEBOOK) {
-            stored = prefs.getString(KEY_FB_TOKEN, "");
+            return getFacebookToken();
+        } else if (platform == SocialPlatform.THREADS) {
+            return getThreadsToken();
         } else if (platform == SocialPlatform.LINKEDIN) {
-            stored = prefs.getString(KEY_LI_TOKEN, "");
+            return decryptSecret(prefs.getString(KEY_LI_TOKEN, ""));
         }
-        return decryptSecret(stored);
+        return "";
     }
 
     public String getOAuthRefreshToken(SocialPlatform platform) {
-        String stored = "";
         if (platform == SocialPlatform.FACEBOOK) {
-            stored = prefs.getString(KEY_FB_REFRESH, "");
+            return decryptSecret(prefs.getString(KEY_FB_REFRESH, ""));
+        } else if (platform == SocialPlatform.THREADS) {
+            return getThreadsRefreshToken();
         } else if (platform == SocialPlatform.LINKEDIN) {
-            stored = prefs.getString(KEY_LI_REFRESH, "");
+            return decryptSecret(prefs.getString(KEY_LI_REFRESH, ""));
         }
-        return decryptSecret(stored);
+        return "";
     }
 
     public boolean isTokenExpired(SocialPlatform platform) {
         String token = getOAuthToken(platform);
-
         if (token == null || token.trim().isEmpty()) {
             return true;
         }
 
         long expiry;
-
         if (platform == SocialPlatform.FACEBOOK) {
             expiry = prefs.getLong(KEY_FB_EXPIRY, 0L);
+        } else if (platform == SocialPlatform.THREADS) {
+            expiry = prefs.getLong(KEY_THREADS_EXPIRY, 0L);
         } else if (platform == SocialPlatform.LINKEDIN) {
             expiry = prefs.getLong(KEY_LI_EXPIRY, 0L);
         } else {
             return true;
         }
 
-        return expiry <= 0L || System.currentTimeMillis() >= expiry;
+        return expiry > 0L && System.currentTimeMillis() >= expiry;
     }
 
     public void clearOAuthToken(SocialPlatform platform) {
-        SharedPreferences.Editor editor = prefs.edit();
         if (platform == SocialPlatform.FACEBOOK) {
-            editor.remove(KEY_FB_TOKEN).remove(KEY_FB_REFRESH).remove(KEY_FB_EXPIRY);
+            clearFacebookToken();
+        } else if (platform == SocialPlatform.THREADS) {
+            clearThreadsToken();
         } else {
-            editor.remove(KEY_LI_TOKEN).remove(KEY_LI_REFRESH).remove(KEY_LI_EXPIRY);
+            prefs.edit()
+                    .remove(KEY_LI_TOKEN)
+                    .remove(KEY_LI_REFRESH)
+                    .remove(KEY_LI_EXPIRY)
+                    .apply();
         }
-        editor.apply();
     }
 
     public void saveThreadsToken(String token) {
-        String clean = token != null ? token.trim() : "";
-        String encToken = encryptSecret(clean);
-        prefs.edit().putString(KEY_THREADS_TOKEN, encToken).apply();
+        saveThreadsAccount("me", "threads_user", token, "", 60L * 86400L);
+    }
+
+    public void saveThreadsAccount(String userId, String username, String token, String refreshToken, long expiresInSeconds) {
+        long expiryTime = System.currentTimeMillis() + (expiresInSeconds * 1000L);
+        prefs.edit()
+                .putString(KEY_THREADS_TOKEN, encryptSecret(token != null ? token.trim() : ""))
+                .putString(KEY_THREADS_REFRESH, encryptSecret(refreshToken != null ? refreshToken.trim() : ""))
+                .putString(KEY_THREADS_USER_ID, userId != null ? userId.trim() : "me")
+                .putString(KEY_THREADS_USERNAME, username != null ? username.trim() : "")
+                .putLong(KEY_THREADS_EXPIRY, expiryTime)
+                .apply();
     }
 
     public String getThreadsToken() {
-        String stored = prefs.getString(KEY_THREADS_TOKEN, "");
-        if (stored.isEmpty()) return "";
-        return decryptSecret(stored);
+        return decryptSecret(prefs.getString(KEY_THREADS_TOKEN, ""));
+    }
+
+    public String getThreadsRefreshToken() {
+        return decryptSecret(prefs.getString(KEY_THREADS_REFRESH, ""));
+    }
+
+    public String getThreadsUserId() {
+        return prefs.getString(KEY_THREADS_USER_ID, "me");
+    }
+
+    public String getThreadsUsername() {
+        return prefs.getString(KEY_THREADS_USERNAME, "");
+    }
+
+    public boolean isThreadsTokenExpired() {
+        return isTokenExpired(SocialPlatform.THREADS);
     }
 
     public void clearThreadsToken() {
         prefs.edit()
                 .remove(KEY_THREADS_TOKEN)
+                .remove(KEY_THREADS_REFRESH)
+                .remove(KEY_THREADS_EXPIRY)
+                .remove(KEY_THREADS_USER_ID)
+                .remove(KEY_THREADS_USERNAME)
                 .apply();
-    }
-
-    public String getFacebookToken() {
-        return getOAuthToken(SocialPlatform.FACEBOOK);
-    }
-
-    public String getFacebookPageId() {
-        return prefs.getString(KEY_FB_PAGE_ID, "");
     }
 
     public void saveFacebookPageId(String pageId) {
         prefs.edit().putString(KEY_FB_PAGE_ID, pageId != null ? pageId.trim() : "").apply();
-    }
-
-    public String getThreadsUserId() {
-        return prefs.getString(KEY_THREADS_USER_ID, "me");
     }
 
     public void saveThreadsUserId(String userId) {
