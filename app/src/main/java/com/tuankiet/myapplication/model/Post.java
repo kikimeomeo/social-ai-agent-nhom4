@@ -29,6 +29,11 @@ public class Post implements Serializable {
     private boolean isPublishedFacebook;
     private boolean isPublishedThreads;
     private boolean isPublishedLinkedIn;
+    private String idempotencyKey;
+    private String fbPostUrl;
+    private String threadsPostUrl;
+    private String publishError;
+    private int retryCount;
 
     public Post() {
         this.status = STATUS_DRAFT;
@@ -221,7 +226,47 @@ public class Post implements Serializable {
     }
 
     public void setPublishedLinkedIn(boolean publishedLinkedIn) {
-        isPublishedLinkedIn = publishedLinkedIn;
+        this.isPublishedLinkedIn = publishedLinkedIn;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getFbPostUrl() {
+        return fbPostUrl;
+    }
+
+    public void setFbPostUrl(String fbPostUrl) {
+        this.fbPostUrl = fbPostUrl;
+    }
+
+    public String getThreadsPostUrl() {
+        return threadsPostUrl;
+    }
+
+    public void setThreadsPostUrl(String threadsPostUrl) {
+        this.threadsPostUrl = threadsPostUrl;
+    }
+
+    public String getPublishError() {
+        return publishError;
+    }
+
+    public void setPublishError(String publishError) {
+        this.publishError = publishError;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
     }
 }
 

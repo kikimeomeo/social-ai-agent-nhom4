@@ -280,11 +280,14 @@
 
                 <!-- Facebook Page Card -->
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardFbChannel"
                     style="@style/SocialCard"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
-                    android:layout_weight="1">
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -337,11 +340,14 @@
 
                 <!-- Threads Card (keeps tvLi* IDs for compatibility) -->
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardThreadsChannel"
                     style="@style/SocialCard"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
-                    android:layout_weight="1">
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"

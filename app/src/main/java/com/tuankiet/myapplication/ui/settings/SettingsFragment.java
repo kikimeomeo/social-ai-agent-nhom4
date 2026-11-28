@@ -6,10 +6,15 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.fragment.app.Fragment;
 
 import com.tuankiet.myapplication.R;
@@ -44,14 +49,43 @@ public class SettingsFragment extends Fragment {
         prefManager = SecurePreferenceManager.getInstance(requireContext());
         repository = MockDataRepository.getInstance(requireContext());
 
+        setupSpinners();
         loadSettings();
         setupListeners();
-        // Tam khoa ket noi OAuth khi chua cau hinh
-        binding.switchFbConnection.setEnabled(false);
-        binding.switchLiConnection.setEnabled(false);
     }
 
-    private void loadSettings() {
+    private void setupSpinners() {
+        String[] models = new String[] {
+            "gemini-3.1-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "anthropic/claude-3.5-sonnet",
+            "deepseek/deepseek-chat"
+        };
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            requireContext(), android.R.layout.simple_spinner_item, models
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.spnModelPost.setAdapter(adapter);
+        binding.spnModelComment.setAdapter(adapter);
+        binding.spnModelImage.setAdapter(adapter);
+    }
+
+    private void setSpinnerSelection(Spinner spinner, String value) {
+        if (value == null) return;
+        SpinnerAdapter adapter = spinner.getAdapter();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            if (value.equals(adapter.getItem(i))) {
+                spinner.setSelection(i);
+                break;
+            }
+        }
+    }
+
+    public void loadSettings() {
         // 1. Accounts
         refreshAccountDisplay();
 
@@ -59,21 +93,24 @@ public class SettingsFragment extends Fragment {
         String threadsToken = prefManager.getThreadsToken();
         if (threadsToken != null && !threadsToken.isEmpty()) {
             binding.etSettingsThreadsToken.setText(threadsToken);
-            binding.tvSettingsThreadsDesc.setText(
-                    "Đã lưu Token • Chưa xác minh kết nối"
-            );
-            binding.tvSettingsThreadsDesc.setTextColor(
-                    getResources().getColor(R.color.text_secondary)
-            );
         } else {
-            binding.tvSettingsThreadsDesc.setText("Chưa cấu hình Token");
-            binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.text_secondary));
+            binding.etSettingsThreadsToken.setText("");
         }
 
         // 2. LLM Config
         LLMConfig config = prefManager.getConfig();
         binding.switchDemoMode.setChecked(config.isDemoMode());
         updateApiKeyInputState(config.isDemoMode());
+
+        setSpinnerSelection(binding.spnModelPost, config.getPostGenerationModel());
+        setSpinnerSelection(binding.spnModelComment, config.getCommentClassificationModel());
+        setSpinnerSelection(binding.spnModelImage, config.getImagePromptModel());
+        String currentLocale = AppCompatDelegate.getApplicationLocales().toLanguageTags();
+        if (currentLocale.contains("en")) {
+            binding.rbEn.setChecked(true);
+        } else {
+            binding.rbVi.setChecked(true);
+        }
 
         if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
             binding.rbOpenAI.setChecked(true);
@@ -124,11 +161,21 @@ public class SettingsFragment extends Fragment {
     }
 
     private void updateTokenMetrics(LLMConfig config) {
-        binding.tvTotalTokens.setText(String.format("%,d", config.getTotalTokensUsed()));
+        binding.tvTotalTokens.setText(String.format("%,d tokens", config.getTotalTokensUsed()));
         binding.tvTotalCost.setText(String.format("$%.4f USD", config.getTotalCostUsd()));
+        binding.tvTodayTokens.setText(String.format("%,d tokens ($%.4f)", prefManager.getTodayTokens(), prefManager.getTodayCost()));
+        binding.tvMonthTokens.setText(String.format("%,d tokens ($%.4f)", prefManager.getThisMonthTokens(), prefManager.getThisMonthCost()));
     }
 
     private void setupListeners() {
+        // Language Listener
+        binding.rgLanguage.setOnCheckedChangeListener((group, checkedId) -> {
+            String langTag = (checkedId == R.id.rbEn) ? "en" : "vi";
+            AppCompatDelegate.setApplicationLocales(
+                LocaleListCompat.forLanguageTags(langTag)
+            );
+        });
+
         // Provider Selection Listener
         binding.rgProvider.setOnCheckedChangeListener((group, checkedId) -> updateHelperLinkText());
 
@@ -148,31 +195,43 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // Toggle Facebook
-        binding.switchFbConnection.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (updatingAccountUi) return;
-
-            if (isChecked) {
-                OAuthManager.getInstance(requireContext()).launchOAuth(requireActivity(), SocialPlatform.FACEBOOK);
-            } else {
-                OAuthManager.getInstance(requireContext()).disconnectChannel(SocialPlatform.FACEBOOK);
-                Toast.makeText(getContext(), "Đã ngắt kết nối Facebook Page.", Toast.LENGTH_SHORT).show();
-            }
+        // Facebook Channel Actions
+        binding.btnConnectFbOAuth.setOnClickListener(v -> {
+            OAuthManager.getInstance(requireContext()).launchOAuth(requireActivity(), SocialPlatform.FACEBOOK);
         });
 
-        // Toggle LinkedIn
-        binding.switchLiConnection.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (updatingAccountUi) return;
+        binding.btnRefreshFbToken.setOnClickListener(v -> {
+            Toast.makeText(getContext(), "Đang kiểm tra kết nối Facebook Page...", Toast.LENGTH_SHORT).show();
+            OAuthManager.getInstance(requireContext()).checkAndRefreshTokenIfNeeded(SocialPlatform.FACEBOOK, new OAuthManager.OAuthCallback() {
+                @Override
+                public void onSuccess(SocialPlatform platform, String message) {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                        refreshAccountDisplay();
+                    }
+                }
 
-            if (isChecked) {
-                OAuthManager.getInstance(requireContext()).launchOAuth(requireActivity(), SocialPlatform.LINKEDIN);
-            } else {
-                OAuthManager.getInstance(requireContext()).disconnectChannel(SocialPlatform.LINKEDIN);
-                Toast.makeText(getContext(), "Đã ngắt kết nối LinkedIn.", Toast.LENGTH_SHORT).show();
-            }
+                @Override
+                public void onError(String errorMessage) {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                        refreshAccountDisplay();
+                    }
+                }
+            });
         });
 
-        // Save Threads Token
+        binding.btnDisconnectFb.setOnClickListener(v -> {
+            OAuthManager.getInstance(requireContext()).disconnectChannel(SocialPlatform.FACEBOOK);
+            Toast.makeText(getContext(), "Đã ngắt kết nối Facebook Page.", Toast.LENGTH_SHORT).show();
+            refreshAccountDisplay();
+        });
+
+        // Threads Channel Actions
+        binding.btnConnectThreadsOAuth.setOnClickListener(v -> {
+            OAuthManager.getInstance(requireContext()).launchOAuth(requireActivity(), SocialPlatform.THREADS);
+        });
+
         binding.btnSaveThreadsToken.setOnClickListener(v -> {
             String token = binding.etSettingsThreadsToken.getText() != null ?
                     binding.etSettingsThreadsToken.getText().toString().trim() : "";
@@ -180,31 +239,52 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(getContext(), "Vui lòng nhập Threads Token!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            prefManager.saveThreadsToken(token);
-            binding.tvSettingsThreadsDesc.setText(
-                    "Đã lưu Token • Chưa xác minh kết nối"
-            );
-            binding.tvSettingsThreadsDesc.setTextColor(
-                    getResources().getColor(R.color.text_secondary)
-            );
-            Toast.makeText(getContext(), "🎉 Đã lưu Threads Token thành công!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Đang xác thực Threads Token...", Toast.LENGTH_SHORT).show();
+            OAuthManager.getInstance(requireContext()).connectThreadsWithToken(token, new OAuthManager.OAuthCallback() {
+                @Override
+                public void onSuccess(SocialPlatform platform, String message) {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                        refreshAccountDisplay();
+                    }
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                        refreshAccountDisplay();
+                    }
+                }
+            });
         });
 
-        // Disconnect Threads
+        binding.btnRefreshThreadsToken.setOnClickListener(v -> {
+            Toast.makeText(getContext(), "Đang gửi yêu cầu làm mới Threads Token qua API...", Toast.LENGTH_SHORT).show();
+            OAuthManager.getInstance(requireContext()).checkAndRefreshTokenIfNeeded(SocialPlatform.THREADS, new OAuthManager.OAuthCallback() {
+                @Override
+                public void onSuccess(SocialPlatform platform, String message) {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                        refreshAccountDisplay();
+                    }
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), errorMessage, Toast.LENGTH_LONG).show();
+                        refreshAccountDisplay();
+                    }
+                }
+            });
+        });
+
         binding.btnDisconnectThreads.setOnClickListener(v -> {
-            prefManager.clearThreadsToken();
-
+            OAuthManager.getInstance(requireContext()).disconnectChannel(SocialPlatform.THREADS);
             binding.etSettingsThreadsToken.setText("");
-            binding.tvSettingsThreadsDesc.setText("Chưa cấu hình Token");
-            binding.tvSettingsThreadsDesc.setTextColor(
-                    getResources().getColor(R.color.text_secondary)
-            );
-
-            Toast.makeText(
-                    requireContext(),
-                    "Đã xóa Threads Token trên thiết bị!",
-                    Toast.LENGTH_SHORT
-            ).show();
+            Toast.makeText(requireContext(), "Đã ngắt kết nối và xoá Threads Token!", Toast.LENGTH_SHORT).show();
+            refreshAccountDisplay();
         });
 
         // Toggle Demo Mode
@@ -259,7 +339,11 @@ public class SettingsFragment extends Fragment {
                     binding.etApiKey.getText().toString().trim() : "";
             boolean isDemo = binding.switchDemoMode.isChecked();
 
-            prefManager.saveConfig(provider, apiKey, isDemo);
+            String modelPost = binding.spnModelPost.getSelectedItem() != null ? binding.spnModelPost.getSelectedItem().toString() : "gemini-3.1-flash-lite";
+            String modelComment = binding.spnModelComment.getSelectedItem() != null ? binding.spnModelComment.getSelectedItem().toString() : "gemini-2.5-flash-lite";
+            String modelImage = binding.spnModelImage.getSelectedItem() != null ? binding.spnModelImage.getSelectedItem().toString() : "gemini-2.0-flash";
+
+            prefManager.saveConfig(provider, apiKey, isDemo, modelPost, modelComment, modelImage);
             binding.tvApiKeyStatus.setVisibility(View.VISIBLE);
             if (isDemo) {
                 binding.tvApiKeyStatus.setText("Trạng thái Key: Đang hoạt động ở Chế độ Demo (Giả lập)");
@@ -283,36 +367,29 @@ public class SettingsFragment extends Fragment {
     private void refreshAccountDisplay() {
         if (binding == null) return;
 
-        boolean demoMode = prefManager.isDemoMode();
         List<SocialAccount> accounts = repository.getAccounts();
-
-        updatingAccountUi = true;
-
-        try {
-            for (SocialAccount acc : accounts) {
-                String description = acc.getAccountName()
-                        + " (" + acc.getHandle() + ")";
-
-                if (demoMode) {
-                    description += " • TÀI KHOẢN DEMO";
+        for (SocialAccount acc : accounts) {
+            if (acc.getPlatform() == SocialPlatform.FACEBOOK) {
+                if (acc.isConnected()) {
+                    binding.tvSettingsFbDesc.setText("● Đã kết nối • " + acc.getAccountName());
+                    binding.tvSettingsFbDesc.setTextColor(getResources().getColor(R.color.status_green));
                 } else {
-                    description += " • Chưa xác minh OAuth";
+                    binding.tvSettingsFbDesc.setText("○ Chưa kết nối");
+                    binding.tvSettingsFbDesc.setTextColor(getResources().getColor(R.color.text_muted));
                 }
-
-                boolean displayedConnected = demoMode && acc.isConnected();
-
-                if (acc.getPlatform() == SocialPlatform.FACEBOOK) {
-                    binding.tvSettingsFbDesc.setText(description);
-                    binding.switchFbConnection.setChecked(displayedConnected);
-                    binding.switchFbConnection.setEnabled(false);
-                } else if (acc.getPlatform() == SocialPlatform.LINKEDIN) {
-                    binding.tvSettingsLiDesc.setText(description);
-                    binding.switchLiConnection.setChecked(displayedConnected);
-                    binding.switchLiConnection.setEnabled(false);
+            } else if (acc.getPlatform() == SocialPlatform.THREADS) {
+                if (acc.isConnected()) {
+                    binding.tvSettingsThreadsDesc.setText("● Đã kết nối • @" + acc.getAccountName());
+                    binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.status_green));
+                    String token = prefManager.getThreadsToken();
+                    if (token != null && !token.isEmpty() && binding.etSettingsThreadsToken.getText().toString().isEmpty()) {
+                        binding.etSettingsThreadsToken.setText(token);
+                    }
+                } else {
+                    binding.tvSettingsThreadsDesc.setText("○ Chưa cấu hình");
+                    binding.tvSettingsThreadsDesc.setTextColor(getResources().getColor(R.color.text_muted));
                 }
             }
-        } finally {
-            updatingAccountUi = false;
         }
     }
 
