@@ -61,7 +61,7 @@
         <!-- Hidden legacy bound views preserved for PostAdapter -->
         <TextView android:id="@+id/tvToneBadge" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
         <ImageView android:id="@+id/ivFbIcon" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
-        <ImageView android:id="@+id/ivLiIcon" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+        <ImageView android:id="@+id/ivThreadsIcon" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
         <TextView android:id="@+id/tvMetrics" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
         <TextView android:id="@+id/tvDate" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
     </LinearLayout>

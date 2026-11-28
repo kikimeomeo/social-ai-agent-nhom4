@@ -74,7 +74,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             binding.tvContentSnippet.setText(snippet.replace("\n", " "));
 
             binding.ivFbIcon.setVisibility(post.isTargetFacebook() ? View.VISIBLE : View.GONE);
-            binding.ivLiIcon.setVisibility((post.isTargetThreads() || post.isTargetLinkedIn()) ? View.VISIBLE : View.GONE);
+            binding.ivThreadsIcon.setVisibility((post.isTargetThreads() || post.isTargetLinkedIn()) ? View.VISIBLE : View.GONE);
 
             // Status Badge
             String status = post.getStatus();

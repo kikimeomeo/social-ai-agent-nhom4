@@ -34,7 +34,7 @@ public class CreatePostFragment extends Fragment {
     private FragmentCreatePostBinding binding;
     private AIAgentOrchestrator orchestrator;
     private Post currentPost;
-    private int currentReviewPlatform = 0; // 0: Facebook, 1: Threads, 2: LinkedIn
+    private int currentReviewPlatform = 0; // 0: Facebook, 1: Threads
     private boolean isViewingFacebookTab = true;
     private boolean isSyncingReviewEditor = false;
     private boolean isRewriteBusy = false;
@@ -159,8 +159,7 @@ public class CreatePostFragment extends Fragment {
 
             boolean targetFb = binding.cbFacebook.isChecked();
             boolean targetThreads = binding.cbThreads.isChecked();
-            boolean targetLi = binding.cbLinkedIn.isChecked();
-            if (!targetFb && !targetThreads && !targetLi) {
+            if (!targetFb && !targetThreads) {
                 Toast.makeText(getContext(), "⚠️ Vui lòng chọn ít nhất 1 kênh đăng!", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -174,7 +173,7 @@ public class CreatePostFragment extends Fragment {
 
             String language = (binding.chipLangEn != null && binding.chipLangEn.isChecked()) ? "English" : "Tiếng Việt";
 
-            startPipeline(topic, tone, language, targetFb, targetThreads, targetLi);
+            startPipeline(topic, tone, language, targetFb, targetThreads, false);
         });
     }
 
@@ -250,9 +249,7 @@ public class CreatePostFragment extends Fragment {
 
             @Override
             public void onStreamLinkedInChunk(String fullCurrentText) {
-                if (binding == null) return;
-                binding.tvLiveStreamOutput.setText("[LinkedIn Agent Output]:\n\n" + fullCurrentText);
-                binding.scrollStream.fullScroll(View.FOCUS_DOWN);
+                // Deprecated channel kept in interface for compatibility
             }
 
             @Override
@@ -409,8 +406,7 @@ public class CreatePostFragment extends Fragment {
 
                 @Override
                 public void onStreamLinkedInChunk(String fullCurrentText) {
-                    if (binding == null) return;
-                    binding.tvLiveStreamOutput.setText("[LinkedIn Retry Output]:\n\n" + fullCurrentText);
+                    // Deprecated channel kept in interface for compatibility
                 }
 
                 @Override
@@ -550,7 +546,6 @@ public class CreatePostFragment extends Fragment {
 
     private SocialPlatform getActiveReviewPlatform() {
         if (currentReviewPlatform == 1) return SocialPlatform.THREADS;
-        if (currentReviewPlatform == 2) return SocialPlatform.LINKEDIN;
         return SocialPlatform.FACEBOOK;
     }
 
@@ -887,9 +882,6 @@ public class CreatePostFragment extends Fragment {
                                     String thUrl = updatedPost.getThreadsPostUrl() != null ? updatedPost.getThreadsPostUrl() : "https://www.threads.net/@socialai/post/" + System.currentTimeMillis() % 100000;
                                     sb.append("• Threads: ✅ ĐÃ ĐĂNG\n  URL: ").append(thUrl).append("\n\n");
                                     if (primaryUrl == null) primaryUrl = thUrl;
-                                }
-                                if (updatedPost.isTargetLinkedIn()) {
-                                    sb.append("• LinkedIn: ✅ ĐÃ ĐĂNG\n\n");
                                 }
 
                                 sb.append("Bài viết đã được lưu vết trong SQLite và bắt đầu theo dõi bình luận tự động (F6).");
@@ -1271,8 +1263,6 @@ public class CreatePostFragment extends Fragment {
         } else {
             dialogBinding.cardSuccessThreads.setVisibility(View.GONE);
         }
-
-        dialogBinding.cardSuccessLinkedIn.setVisibility(View.GONE);
 
         dialogBinding.btnSuccessGoDashboard.setOnClickListener(v -> {
             dialog.dismiss();

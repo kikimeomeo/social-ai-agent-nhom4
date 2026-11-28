@@ -7,12 +7,12 @@ public class AnalyticsData implements Serializable {
     public static class DayMetric implements Serializable {
         private String dayLabel;
         private int facebookEngagement;
-        private int linkedinEngagement;
+        private int threadsEngagement;
 
-        public DayMetric(String dayLabel, int facebookEngagement, int linkedinEngagement) {
+        public DayMetric(String dayLabel, int facebookEngagement, int threadsEngagement) {
             this.dayLabel = dayLabel;
             this.facebookEngagement = facebookEngagement;
-            this.linkedinEngagement = linkedinEngagement;
+            this.threadsEngagement = threadsEngagement;
         }
 
         public String getDayLabel() {
@@ -23,12 +23,12 @@ public class AnalyticsData implements Serializable {
             return facebookEngagement;
         }
 
-        public int getLinkedinEngagement() {
-            return linkedinEngagement;
+        public int getThreadsEngagement() {
+            return threadsEngagement;
         }
 
         public int getTotal() {
-            return facebookEngagement + linkedinEngagement;
+            return facebookEngagement + threadsEngagement;
         }
     }
 
@@ -40,10 +40,10 @@ public class AnalyticsData implements Serializable {
     private int facebookComments;
     private double facebookEngagementRate;
 
-    private int linkedinReach;
-    private int linkedinLikes;
-    private int linkedinComments;
-    private double linkedinEngagementRate;
+    private int threadsReach;
+    private int threadsLikes;
+    private int threadsComments;
+    private double threadsEngagementRate;
 
     private String weeklyAiSummary;
     private String topPerformingPost;
@@ -110,36 +110,36 @@ public class AnalyticsData implements Serializable {
         this.facebookEngagementRate = facebookEngagementRate;
     }
 
-    public int getLinkedinReach() {
-        return linkedinReach;
+    public int getThreadsReach() {
+        return threadsReach;
     }
 
-    public void setLinkedinReach(int linkedinReach) {
-        this.linkedinReach = linkedinReach;
+    public void setThreadsReach(int threadsReach) {
+        this.threadsReach = threadsReach;
     }
 
-    public int getLinkedinLikes() {
-        return linkedinLikes;
+    public int getThreadsLikes() {
+        return threadsLikes;
     }
 
-    public void setLinkedinLikes(int linkedinLikes) {
-        this.linkedinLikes = linkedinLikes;
+    public void setThreadsLikes(int threadsLikes) {
+        this.threadsLikes = threadsLikes;
     }
 
-    public int getLinkedinComments() {
-        return linkedinComments;
+    public int getThreadsComments() {
+        return threadsComments;
     }
 
-    public void setLinkedinComments(int linkedinComments) {
-        this.linkedinComments = linkedinComments;
+    public void setThreadsComments(int threadsComments) {
+        this.threadsComments = threadsComments;
     }
 
-    public double getLinkedinEngagementRate() {
-        return linkedinEngagementRate;
+    public double getThreadsEngagementRate() {
+        return threadsEngagementRate;
     }
 
-    public void setLinkedinEngagementRate(double linkedinEngagementRate) {
-        this.linkedinEngagementRate = linkedinEngagementRate;
+    public void setThreadsEngagementRate(double threadsEngagementRate) {
+        this.threadsEngagementRate = threadsEngagementRate;
     }
 
     public String getWeeklyAiSummary() {
@@ -176,15 +176,15 @@ public class AnalyticsData implements Serializable {
 
     // --- HELPER AGGREGATION METRICS FOR OVERVIEW CARDS ---
     public int getTotalReach() {
-        return facebookReach + linkedinReach;
+        return facebookReach + threadsReach;
     }
 
     public int getTotalLikes() {
-        return facebookLikes + linkedinLikes;
+        return facebookLikes + threadsLikes;
     }
 
     public int getTotalComments() {
-        return facebookComments + linkedinComments;
+        return facebookComments + threadsComments;
     }
 
     public double getAverageEngagementRate() {
@@ -192,23 +192,6 @@ public class AnalyticsData implements Serializable {
         if (totalReach <= 0) return 0.0;
         int totalInteractions = getTotalLikes() + getTotalComments();
         return ((double) totalInteractions / totalReach) * 100.0;
-    }
-
-    // --- ALIAS METHODS FOR THREADS CHANNEL (F7/F9 COMPATIBILITY) ---
-    public int getThreadsReach() {
-        return linkedinReach;
-    }
-
-    public int getThreadsLikes() {
-        return linkedinLikes;
-    }
-
-    public int getThreadsComments() {
-        return linkedinComments;
-    }
-
-    public double getThreadsEngagementRate() {
-        return linkedinEngagementRate;
     }
 }
 

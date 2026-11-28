@@ -229,7 +229,6 @@
             android:visibility="gone">
             <com.google.android.material.chip.Chip android:id="@+id/chipFilterAll" android:layout_width="0dp" android:layout_height="0dp" />
             <com.google.android.material.chip.Chip android:id="@+id/chipFilterFacebook" android:layout_width="0dp" android:layout_height="0dp" />
-            <com.google.android.material.chip.Chip android:id="@+id/chipFilterLinkedIn" android:layout_width="0dp" android:layout_height="0dp" />
             <com.google.android.material.chip.Chip android:id="@+id/chipFilterThreads" android:layout_width="0dp" android:layout_height="0dp" />
         </com.google.android.material.chip.ChipGroup>
 

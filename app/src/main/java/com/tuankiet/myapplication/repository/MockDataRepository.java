@@ -424,10 +424,10 @@ public class MockDataRepository {
         data.setFacebookComments(112);
         data.setFacebookEngagementRate(5.15);
 
-        data.setLinkedinReach(14200);
-        data.setLinkedinLikes(1120);
-        data.setLinkedinComments(145);
-        data.setLinkedinEngagementRate(8.91);
+        data.setThreadsReach(14200);
+        data.setThreadsLikes(1120);
+        data.setThreadsComments(145);
+        data.setThreadsEngagementRate(8.91);
 
         data.setTopPerformingPost("5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026 (7,700 Reach, 550 Likes)");
         data.setWeeklyAiSummary("Hiệu suất tuần này rất khả quan! Kênh Threads có tỉ lệ tương tác vượt trội (8.9%) nhờ nội dung ngắn gọn giàu tính thảo luận. Kênh Facebook duy trì lượng Reach ổn định với 18,500 lượt xem.");

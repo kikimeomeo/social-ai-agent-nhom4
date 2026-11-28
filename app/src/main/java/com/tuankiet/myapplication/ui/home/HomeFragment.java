@@ -190,12 +190,12 @@ public class HomeFragment extends Fragment {
                 binding.tvFbFollowers.setText(acc.getFollowerCount() + " người theo dõi");
                 binding.tvFbStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
                 binding.tvFbStatus.setTextColor(getResources().getColor(acc.isConnected() ? R.color.status_green : R.color.text_muted));
-            } else if (acc.getPlatform() == SocialPlatform.THREADS || acc.getPlatform() == SocialPlatform.LINKEDIN) {
+            } else if (acc.getPlatform() == SocialPlatform.THREADS) {
                 String thName = acc.getHandle() != null ? acc.getHandle() : "@aitech.vn";
-                binding.tvLiProfileName.setText(thName);
-                binding.tvLiFollowers.setText(acc.getFollowerCount() + " người theo dõi");
-                binding.tvLiStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
-                binding.tvLiStatus.setTextColor(getResources().getColor(acc.isConnected() ? R.color.status_green : R.color.text_muted));
+                binding.tvThreadsProfileName.setText(thName);
+                binding.tvThreadsFollowers.setText(acc.getFollowerCount() + " người theo dõi");
+                binding.tvThreadsStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
+                binding.tvThreadsStatus.setTextColor(getResources().getColor(acc.isConnected() ? R.color.status_green : R.color.text_muted));
             }
         }
 
