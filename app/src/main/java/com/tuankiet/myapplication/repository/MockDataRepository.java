@@ -297,6 +297,15 @@ public class MockDataRepository {
         dbHelper.insertPost(post);
     }
 
+    public void updatePost(Post post) {
+        if (post == null) return;
+        if (post.getId() > 0) {
+            dbHelper.updatePost(post);
+        } else {
+            dbHelper.insertPost(post);
+        }
+    }
+
     private CommentItem createAnalyzedSeedComment(SocialPlatform platform,
                                                   String postTitle,
                                                   String postContent,

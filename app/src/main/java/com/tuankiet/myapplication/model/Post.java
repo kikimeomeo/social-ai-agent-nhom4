@@ -29,6 +29,8 @@ public class Post implements Serializable {
     private boolean isPublishedFacebook;
     private boolean isPublishedThreads;
     private boolean isPublishedLinkedIn;
+    private boolean userApproved;
+    private int imageVariantIndex;
     private String idempotencyKey;
     private String fbPostUrl;
     private String threadsPostUrl;
@@ -38,6 +40,8 @@ public class Post implements Serializable {
     public Post() {
         this.status = STATUS_DRAFT;
         this.createdAt = System.currentTimeMillis();
+        this.userApproved = false;
+        this.imageVariantIndex = 0;
     }
 
     public Post(long id, String topic, String tone, String contentFacebook, String contentLinkedIn,
@@ -267,6 +271,22 @@ public class Post implements Serializable {
 
     public void setRetryCount(int retryCount) {
         this.retryCount = retryCount;
+    }
+
+    public boolean isUserApproved() {
+        return userApproved;
+    }
+
+    public void setUserApproved(boolean userApproved) {
+        this.userApproved = userApproved;
+    }
+
+    public int getImageVariantIndex() {
+        return imageVariantIndex;
+    }
+
+    public void setImageVariantIndex(int imageVariantIndex) {
+        this.imageVariantIndex = imageVariantIndex;
     }
 }
 

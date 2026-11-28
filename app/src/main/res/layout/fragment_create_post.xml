@@ -671,6 +671,28 @@
             android:paddingTop="6dp"
             android:visibility="gone">
 
+            <!-- Human-in-the-loop Safety Gate Banner -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_soft_pill"
+                android:backgroundTint="@color/status_green_bg"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp">
+
+                <TextView
+                    android:id="@+id/tvHumanGateStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🛡️ Chốt chặn an toàn: AI không tự ý đăng — chỉ xuất bản sau khi bạn bấm xác nhận duyệt"
+                    android:textColor="@color/status_green"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <!-- Channel Switcher Card (Facebook vs Threads only, NO LinkedIn!) -->
             <com.google.android.material.card.MaterialCardView
                 style="@style/SocialCard"
@@ -783,65 +805,113 @@
                                     android:textStyle="bold" />
                             </LinearLayout>
 
-                            <!-- Quick AI Assistant Rewrite Pills -->
-                            <LinearLayout
+                            <!-- Quick AI Assistant Rewrite Pills (Connected to Real LLM API) -->
+                            <HorizontalScrollView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="10dp"
-                                android:orientation="horizontal">
+                                android:scrollbars="none">
 
-                                <com.google.android.material.button.MaterialButton
-                                    android:id="@+id/btnRewriteShorter"
-                                    android:layout_width="0dp"
-                                    android:layout_height="30dp"
-                                    android:layout_marginEnd="6dp"
-                                    android:layout_weight="1"
-                                    android:insetTop="0dp"
-                                    android:insetBottom="0dp"
-                                    android:minHeight="0dp"
-                                    android:paddingHorizontal="4dp"
-                                    android:text="Ngắn hơn"
-                                    android:textColor="@color/primary_dark"
-                                    android:textSize="10sp"
-                                    android:textStyle="bold"
-                                    app:backgroundTint="@color/bg_soft_fill"
-                                    app:cornerRadius="15dp"
-                                    app:strokeWidth="0dp" />
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal">
 
-                                <com.google.android.material.button.MaterialButton
-                                    android:id="@+id/btnRewriteFormal"
-                                    android:layout_width="0dp"
-                                    android:layout_height="30dp"
-                                    android:layout_marginEnd="6dp"
-                                    android:layout_weight="1"
-                                    android:insetTop="0dp"
-                                    android:insetBottom="0dp"
-                                    android:minHeight="0dp"
-                                    android:paddingHorizontal="4dp"
-                                    android:text="Trang trọng"
-                                    android:textColor="@color/primary_dark"
-                                    android:textSize="10sp"
-                                    android:textStyle="bold"
-                                    app:backgroundTint="@color/bg_soft_fill"
-                                    app:cornerRadius="15dp"
-                                    app:strokeWidth="0dp" />
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRewriteShorter"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="32dp"
+                                        android:layout_marginEnd="6dp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp"
+                                        android:minHeight="0dp"
+                                        android:paddingHorizontal="10dp"
+                                        android:text="✂️ Ngắn hơn"
+                                        android:textColor="@color/primary_dark"
+                                        android:textSize="11sp"
+                                        android:textStyle="bold"
+                                        app:backgroundTint="@color/bg_soft_fill"
+                                        app:cornerRadius="16dp"
+                                        app:strokeWidth="0dp" />
 
-                                <com.google.android.material.button.MaterialButton
-                                    android:id="@+id/btnRewriteHook"
-                                    android:layout_width="0dp"
-                                    android:layout_height="30dp"
-                                    android:layout_weight="1"
-                                    android:insetTop="0dp"
-                                    android:insetBottom="0dp"
-                                    android:minHeight="0dp"
-                                    android:paddingHorizontal="4dp"
-                                    android:text="Đổi Hook"
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRewriteFormal"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="32dp"
+                                        android:layout_marginEnd="6dp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp"
+                                        android:minHeight="0dp"
+                                        android:paddingHorizontal="10dp"
+                                        android:text="👔 Trang trọng hơn"
+                                        android:textColor="@color/primary_dark"
+                                        android:textSize="11sp"
+                                        android:textStyle="bold"
+                                        app:backgroundTint="@color/bg_soft_fill"
+                                        app:cornerRadius="16dp"
+                                        app:strokeWidth="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnRewriteHook"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="32dp"
+                                        android:layout_marginEnd="6dp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp"
+                                        android:minHeight="0dp"
+                                        android:paddingHorizontal="10dp"
+                                        android:text="🪝 Đổi Hook mở đầu"
+                                        android:textColor="@color/primary_dark"
+                                        android:textSize="11sp"
+                                        android:textStyle="bold"
+                                        app:backgroundTint="@color/bg_soft_fill"
+                                        app:cornerRadius="16dp"
+                                        app:strokeWidth="0dp" />
+
+                                    <com.google.android.material.button.MaterialButton
+                                        android:id="@+id/btnUndoRewrite"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="32dp"
+                                        android:insetTop="0dp"
+                                        android:insetBottom="0dp"
+                                        android:minHeight="0dp"
+                                        android:paddingHorizontal="10dp"
+                                        android:text="↩ Hoàn tác"
+                                        android:textColor="@color/text_secondary"
+                                        android:textSize="11sp"
+                                        android:textStyle="bold"
+                                        android:visibility="gone"
+                                        app:backgroundTint="@color/bg_soft_alt"
+                                        app:cornerRadius="16dp"
+                                        app:strokeWidth="0dp" />
+                                </LinearLayout>
+                            </HorizontalScrollView>
+
+                            <!-- Inline LLM Rewrite Progress Indicator -->
+                            <LinearLayout
+                                android:id="@+id/layoutRewriteLoading"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:visibility="gone">
+
+                                <ProgressBar
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:indeterminate="true"
+                                    android:indeterminateTint="@color/primary" />
+
+                                <TextView
+                                    android:id="@+id/tvRewriteLoadingText"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:text="AI đang kết nối LLM để viết lại..."
                                     android:textColor="@color/primary_dark"
-                                    android:textSize="10sp"
-                                    android:textStyle="bold"
-                                    app:backgroundTint="@color/bg_soft_fill"
-                                    app:cornerRadius="15dp"
-                                    app:strokeWidth="0dp" />
+                                    android:textSize="11sp"
+                                    android:textStyle="bold" />
                             </LinearLayout>
 
                             <!-- Editable Post Content inside soft #EBF7FD box -->
@@ -895,6 +965,18 @@
                                         android:textSize="11sp" />
                                 </LinearLayout>
                             </com.google.android.material.card.MaterialCardView>
+
+                            <!-- Accurate Platform Character Counter -->
+                            <TextView
+                                android:id="@+id/tvCharCounter"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:gravity="end"
+                                android:text="0 / 63,206 ký tự (Facebook)"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
 
                             <!-- Generated AI Image / Visual Asset Preview -->
                             <com.google.android.material.card.MaterialCardView
@@ -958,11 +1040,11 @@
                                 </FrameLayout>
                             </com.google.android.material.card.MaterialCardView>
 
-                            <!-- Footer row: Prompt + Restore Image + Char counter -->
+                            <!-- Footer row: Prompt + Restore Image -->
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
+                                android:layout_marginTop="10dp"
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal">
 
@@ -984,27 +1066,88 @@
                                     app:cornerRadius="14dp"
                                     app:strokeWidth="0dp" />
 
-                                <TextView
-                                    android:id="@+id/tvImagePromptPreview"
+                                <LinearLayout
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
-                                    android:layout_marginEnd="8dp"
                                     android:layout_weight="1"
-                                    android:ellipsize="end"
-                                    android:maxLines="1"
-                                    android:text="Prompt ảnh: Minimal tech..."
-                                    android:textColor="@color/text_muted"
-                                    android:textSize="10sp" />
+                                    android:orientation="vertical">
 
-                                <TextView
-                                    android:id="@+id/tvCharCounter"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="450 / 63,206"
-                                    android:textColor="@color/primary"
-                                    android:textSize="10sp"
-                                    android:textStyle="bold" />
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="🎨 Ảnh minh họa bài viết"
+                                        android:textColor="@color/text_primary"
+                                        android:textSize="12sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/tvImageSourceBadge"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Visual Agent • Đang chờ"
+                                        android:textColor="@color/text_muted"
+                                        android:textSize="10sp" />
+                                </LinearLayout>
                             </LinearLayout>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="match_parent"
+                                android:layout_height="164dp"
+                                android:layout_marginTop="8dp"
+                                app:cardCornerRadius="14dp"
+                                app:cardElevation="0dp"
+                                app:strokeColor="@color/card_stroke"
+                                app:strokeWidth="1dp">
+
+                                <FrameLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent">
+
+                                    <ImageView
+                                        android:id="@+id/ivReviewImagePreview"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:contentDescription="Ảnh minh họa bài đăng"
+                                        android:scaleType="centerCrop"
+                                        android:src="@drawable/bg_image_placeholder" />
+
+                                    <LinearLayout
+                                        android:id="@+id/overlayReviewImageLoading"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:background="#AA0F172A"
+                                        android:gravity="center"
+                                        android:orientation="vertical"
+                                        android:visibility="gone">
+
+                                        <ProgressBar
+                                            android:layout_width="26dp"
+                                            android:layout_height="26dp"
+                                            android:indeterminate="true"
+                                            android:indeterminateTint="@color/white" />
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginTop="6dp"
+                                            android:text="Visual Agent đang sinh ảnh mới..."
+                                            android:textColor="@color/white"
+                                            android:textSize="11sp"
+                                            android:textStyle="bold" />
+                                    </LinearLayout>
+                                </FrameLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <TextView
+                                android:id="@+id/tvImagePromptPreview"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:ellipsize="end"
+                                android:maxLines="2"
+                                android:text="Prompt ảnh: Minimal tech..."
+                                android:textColor="@color/text_muted"
+                                android:textSize="10sp" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -1024,7 +1167,7 @@
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:minHeight="0dp"
-                            android:text="Đăng ngay (Demo)"
+                            android:text="✅ Duyệt &amp; Đăng ngay"
                             android:textColor="@color/white"
                             android:textSize="11sp"
                             android:textStyle="bold"
@@ -1057,14 +1200,32 @@
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnShareToRealApp"
+                            android:id="@+id/btnOpenPreviewDialog"
                             android:layout_width="0dp"
                             android:layout_height="38dp"
+                            android:layout_marginEnd="6dp"
                             android:layout_weight="1"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:minHeight="0dp"
-                            android:text="Chia sẻ app thật"
+                            android:text="👁️ Xem trước Preview"
+                            android:textColor="@color/primary_dark"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/primary_light"
+                            app:cornerRadius="19dp"
+                            app:strokeWidth="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnShareToRealApp"
+                            android:layout_width="0dp"
+                            android:layout_height="38dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="0dp"
+                            android:text="Chia sẻ / API thật"
                             android:textColor="@color/primary_dark"
                             android:textSize="11sp"
                             android:textStyle="bold"

@@ -20,6 +20,7 @@ import com.tuankiet.myapplication.model.SocialAccount;
 import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.repository.MockDataRepository;
 import com.tuankiet.myapplication.data.SecurePreferenceManager;
+import com.tuankiet.myapplication.ui.preview.PreviewDialogFragment;
 
 import java.util.List;
 
@@ -86,45 +87,29 @@ public class HomeFragment extends Fragment {
         binding.rvRecentPosts.setAdapter(adapter);
 
         adapter.setOnPostClickListener(post -> {
-            StringBuilder msg = new StringBuilder();
-            msg.append("Chủ đề: ").append(post.getTopic()).append("\n");
-            msg.append("Trạng thái: ").append(post.getStatus()).append("\n");
+            SocialPlatform initialPlatform = (post.isTargetThreads() && !post.isTargetFacebook())
+                    ? SocialPlatform.THREADS
+                    : SocialPlatform.FACEBOOK;
+            PreviewDialogFragment dialog = PreviewDialogFragment.newInstance(post, initialPlatform);
+            dialog.setOnPreviewActionListener(new PreviewDialogFragment.OnPreviewActionListener() {
+                @Override
+                public void onPostUpdated(Post updatedPost) {
+                    if (!isAdded() || updatedPost == null) return;
+                    repository.updatePost(updatedPost);
+                    loadData();
+                }
 
-            if (post.getIdempotencyKey() != null && !post.getIdempotencyKey().isEmpty()) {
-                msg.append("Mã chống trùng lặp (Idempotency): ").append(post.getIdempotencyKey()).append("\n");
-            }
-            if (post.getRetryCount() > 0) {
-                msg.append("Số lần retry: ").append(post.getRetryCount()).append("\n");
-            }
-            if (post.getPublishError() != null && !post.getPublishError().isEmpty()) {
-                msg.append("\n⚠️ Chi tiết lỗi: ").append(post.getPublishError()).append("\n");
-            }
-
-            String targetUrl = post.getThreadsPostUrl();
-            if (targetUrl == null || targetUrl.isEmpty()) {
-                targetUrl = post.getFbPostUrl();
-            }
-
-            if (targetUrl != null && !targetUrl.isEmpty()) {
-                msg.append("\n🔗 Đường dẫn gốc: ").append(targetUrl);
-            }
-
-            androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                    .setTitle("📋 Thông Tin Bài Viết")
-                    .setMessage(msg.toString());
-
-            final String finalUrl = targetUrl;
-            if (finalUrl != null && (finalUrl.startsWith("http://") || finalUrl.startsWith("https://"))) {
-                builder.setPositiveButton("Mở bài viết gốc", (dialog, which) -> {
-                    try {
-                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(finalUrl)));
-                    } catch (Exception ignored) {}
-                });
-                builder.setNegativeButton("Đóng", null);
-            } else {
-                builder.setPositiveButton("Đóng", null);
-            }
-            builder.show();
+                @Override
+                public void onApprovedForPublish(Post approvedPost, SocialPlatform activePlatform) {
+                    if (!isAdded() || approvedPost == null) return;
+                    approvedPost.setStatus(Post.STATUS_PUBLISHED);
+                    approvedPost.setUserApproved(true);
+                    repository.updatePost(approvedPost);
+                    loadData();
+                    Toast.makeText(getContext(), "✅ Đã duyệt & cập nhật bài viết (" + activePlatform.getShortName() + ")!", Toast.LENGTH_SHORT).show();
+                }
+            });
+            dialog.show(getParentFragmentManager(), "HomePreviewDialog");
         });
     }
 

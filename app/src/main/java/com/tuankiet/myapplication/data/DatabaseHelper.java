@@ -68,9 +68,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "topic TEXT, " +
                 "tone TEXT, " +
                 "content_fb TEXT, " +
+                "content_threads TEXT, " +
                 "content_li TEXT, " +
                 "status TEXT, " +
                 "target_fb INTEGER, " +
+                "target_threads INTEGER DEFAULT 0, " +
                 "target_li INTEGER, " +
                 "created_at INTEGER, " +
                 "image_url TEXT, " +
@@ -151,6 +153,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 3) {
             createAnalyticsHistoryTable(db);
+            addColumnIfMissing(db, "posts", "content_threads", "TEXT");
+            addColumnIfMissing(db, "posts", "target_threads", "INTEGER DEFAULT 0");
             addColumnIfMissing(db, "comments", "post_content", "TEXT");
             addColumnIfMissing(db, "comments", "external_comment_id", "TEXT");
             addColumnIfMissing(db, "comments", "is_faq", "INTEGER DEFAULT 0");
@@ -173,15 +177,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("UPDATE comments SET platform = 'THREADS' WHERE platform = 'LINKEDIN'");
 
             // Add new columns to posts table for F5 Offline Queue & Idempotency
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN idempotency_key TEXT"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN fb_post_url TEXT"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN threads_post_url TEXT"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN publish_error TEXT"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN retry_count INTEGER DEFAULT 0"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN content_threads TEXT"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN target_threads INTEGER DEFAULT 0"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN published_fb INTEGER DEFAULT 0"); } catch (Exception ignored) {}
-            try { db.execSQL("ALTER TABLE posts ADD COLUMN published_threads INTEGER DEFAULT 0"); } catch (Exception ignored) {}
+            addColumnIfMissing(db, "posts", "idempotency_key", "TEXT");
+            addColumnIfMissing(db, "posts", "fb_post_url", "TEXT");
+            addColumnIfMissing(db, "posts", "threads_post_url", "TEXT");
+            addColumnIfMissing(db, "posts", "publish_error", "TEXT");
+            addColumnIfMissing(db, "posts", "retry_count", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "posts", "content_threads", "TEXT");
+            addColumnIfMissing(db, "posts", "target_threads", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "posts", "published_fb", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "posts", "published_threads", "INTEGER DEFAULT 0");
         }
     }
 
@@ -257,7 +261,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("published_fb", post.isPublishedFacebook() ? 1 : 0);
         cv.put("published_threads", post.isPublishedThreads() ? 1 : 0);
         long id = db.insert("posts", null, cv);
-        if (id != -1 && post.getId() == 0) {
+        if (id > 0 && post.getId() == 0) {
             post.setId(id);
         }
         return id;
@@ -388,8 +392,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("content_threads", post.getContentThreads());
         cv.put("status", post.getStatus());
         cv.put("target_fb", post.isTargetFacebook() ? 1 : 0);
-        cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
         cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
+        cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
+        cv.put("image_url", post.getImageUrl());
+        cv.put("image_prompt", post.getImagePrompt());
         cv.put("reach", post.getReachCount());
         cv.put("likes", post.getLikeCount());
         cv.put("comments", post.getCommentCount());

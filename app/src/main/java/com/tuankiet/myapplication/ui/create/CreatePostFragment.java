@@ -12,15 +12,21 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.tabs.TabLayout;
 import com.tuankiet.myapplication.MainActivity;
 import com.tuankiet.myapplication.R;
 import com.tuankiet.myapplication.agent.AIAgentOrchestrator;
+import com.tuankiet.myapplication.agent.PostReviewPolicy;
 import com.tuankiet.myapplication.databinding.FragmentCreatePostBinding;
 import com.tuankiet.myapplication.model.Post;
+import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.repository.MockDataRepository;
+import com.tuankiet.myapplication.ui.preview.PreviewDialogFragment;
+import com.tuankiet.myapplication.util.PostIllustrationGenerator;
 
 public class CreatePostFragment extends Fragment {
 
@@ -29,14 +35,18 @@ public class CreatePostFragment extends Fragment {
     private Post currentPost;
     private int currentReviewPlatform = 0; // 0: Facebook, 1: Threads, 2: LinkedIn
     private boolean isViewingFacebookTab = true;
+    private boolean isSyncingReviewEditor = false;
+    private boolean isRewriteBusy = false;
+    private boolean isImageRegenBusy = false;
+    private String previousReviewTextBeforeRewrite = null;
 
     private String streamFbContent = "";
     private String streamThreadsContent = "";
     private int currentImageStyleIndex = 0;
 
-    private static final int FB_CHAR_LIMIT = 63206;
-    private static final int THREADS_CHAR_LIMIT = 500;
-    private static final int LI_CHAR_LIMIT = 3000;
+    private static final int FB_CHAR_LIMIT = PostReviewPolicy.FACEBOOK_CHAR_LIMIT;
+    private static final int THREADS_CHAR_LIMIT = PostReviewPolicy.THREADS_CHAR_LIMIT;
+    private static final int LI_CHAR_LIMIT = PostReviewPolicy.LINKEDIN_CHAR_LIMIT;
 
     @Nullable
     @Override
@@ -268,6 +278,8 @@ public class CreatePostFragment extends Fragment {
             public void onTabSelected(TabLayout.Tab tab) {
                 currentReviewPlatform = tab.getPosition();
                 isViewingFacebookTab = (currentReviewPlatform == 0);
+                previousReviewTextBeforeRewrite = null;
+                binding.btnUndoRewrite.setVisibility(View.GONE);
                 updateReviewTabContent();
             }
 
@@ -284,42 +296,19 @@ public class CreatePostFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                int length = s != null ? s.length() : 0;
-                int limit = FB_CHAR_LIMIT;
-                String channel = "Facebook";
-                if (currentReviewPlatform == 1) {
-                    limit = THREADS_CHAR_LIMIT;
-                    channel = "Threads";
-                } else if (currentReviewPlatform == 2) {
-                    limit = LI_CHAR_LIMIT;
-                    channel = "LinkedIn";
-                }
-                binding.tvCharCounter.setText(length + " / " + limit + " ký tự (" + channel + ")");
+                if (isSyncingReviewEditor || binding == null) return;
+                String currentText = s != null ? s.toString() : "";
+                updateCharCounterAndSafety(currentText);
 
-                // Alert when exceeding limit (especially Threads 500 chars limit)
-                if (length > limit) {
-                    binding.tvCharCounter.setTextColor(Color.parseColor("#EF4444"));
-                } else {
-                    binding.tvCharCounter.setTextColor(Color.parseColor("#64748B"));
-                }
-
-                // Check Content Safety Warning
-                AIAgentOrchestrator.SafetyCheckResult safety = orchestrator.checkContentSafety(s.toString());
-                if (safety.hasWarning) {
-                    binding.cardContentWarning.setVisibility(View.VISIBLE);
-                    binding.tvContentWarningText.setText(safety.warningMessage);
-                } else {
-                    binding.cardContentWarning.setVisibility(View.GONE);
-                }
-
-                // Keep edited text in currentPost
+                // Keep edited text in currentPost & require fresh explicit approval after edits
                 if (currentPost != null) {
+                    currentPost.setUserApproved(false);
                     if (currentReviewPlatform == 0) {
-                        currentPost.setContentFacebook(s.toString());
+                        currentPost.setContentFacebook(currentText);
                     } else if (currentReviewPlatform == 1) {
-                        currentPost.setContentThreads(s.toString());
+                        currentPost.setContentThreads(currentText);
                     } else {
-                        currentPost.setContentLinkedIn(s.toString());
+                        currentPost.setContentLinkedIn(currentText);
                     }
                 }
             }
@@ -328,56 +317,55 @@ public class CreatePostFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
-        // Quick AI Rewrite Assistant Listeners
-        binding.btnRewriteShorter.setOnClickListener(v -> {
-            String currentText = binding.etReviewContent.getText().toString();
-            Toast.makeText(getContext(), "AI đang tóm tắt ngắn hơn...", Toast.LENGTH_SHORT).show();
-            orchestrator.rewriteSection(currentText, "SHORTER", new AIAgentOrchestrator.RewriteCallback() {
-                @Override
-                public void onSuccess(String rewrittenText) {
-                    binding.etReviewContent.setText(rewrittenText);
-                    Toast.makeText(getContext(), "✨ Đã rút gọn nội dung!", Toast.LENGTH_SHORT).show();
-                }
+        // Quick AI Rewrite Assistant Listeners (Connected to REAL LLM API)
+        binding.btnRewriteShorter.setOnClickListener(v -> performRealAiRewrite(PostReviewPolicy.REWRITE_SHORTER));
+        binding.btnRewriteFormal.setOnClickListener(v -> performRealAiRewrite(PostReviewPolicy.REWRITE_FORMAL));
+        binding.btnRewriteHook.setOnClickListener(v -> performRealAiRewrite(PostReviewPolicy.REWRITE_HOOK));
 
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-                }
-            });
+        binding.btnUndoRewrite.setOnClickListener(v -> {
+            if (previousReviewTextBeforeRewrite != null && binding != null) {
+                binding.etReviewContent.setText(previousReviewTextBeforeRewrite);
+                binding.etReviewContent.setSelection(binding.etReviewContent.getText().length());
+                previousReviewTextBeforeRewrite = null;
+                binding.btnUndoRewrite.setVisibility(View.GONE);
+                Toast.makeText(getContext(), "↩ Đã khôi phục phiên bản trước khi viết lại", Toast.LENGTH_SHORT).show();
+            }
         });
 
-        binding.btnRewriteFormal.setOnClickListener(v -> {
-            String currentText = binding.etReviewContent.getText().toString();
-            Toast.makeText(getContext(), "AI đang chuyển đổi sang giọng văn trang trọng...", Toast.LENGTH_SHORT).show();
-            orchestrator.rewriteSection(currentText, "FORMAL", new AIAgentOrchestrator.RewriteCallback() {
+        // Visual Agent: Sinh lại ảnh minh họa mới ngay tại màn hình Review
+        binding.btnRegenerateImage.setOnClickListener(v -> triggerRegenerateImage());
+
+        // Mở màn hình Preview đầy đủ (PreviewDialogFragment) và đồng bộ ngược lại Step 3
+        binding.btnOpenPreviewDialog.setOnClickListener(v -> {
+            if (currentPost == null) return;
+            PreviewDialogFragment dialog = PreviewDialogFragment.newInstance(currentPost, getActiveReviewPlatform());
+            dialog.setOnPreviewActionListener(new PreviewDialogFragment.OnPreviewActionListener() {
                 @Override
-                public void onSuccess(String rewrittenText) {
-                    binding.etReviewContent.setText(rewrittenText);
-                    Toast.makeText(getContext(), "👔 Đã chuyển sang phong cách trang trọng!", Toast.LENGTH_SHORT).show();
+                public void onPostUpdated(Post updatedPost) {
+                    if (!isAdded() || binding == null || updatedPost == null) return;
+                    currentPost.setContentFacebook(updatedPost.getContentFacebook());
+                    currentPost.setContentThreads(updatedPost.getContentThreads());
+                    currentPost.setImageUrl(updatedPost.getImageUrl());
+                    currentPost.setImagePrompt(updatedPost.getImagePrompt());
+                    currentPost.setImageVariantIndex(updatedPost.getImageVariantIndex());
+                    currentPost.setUserApproved(updatedPost.isUserApproved());
+                    updateReviewTabContent();
+                    bindReviewImage(currentPost, null);
                 }
 
                 @Override
-                public void onError(String error) {
-                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                public void onApprovedForPublish(Post approvedPost, SocialPlatform activePlatform) {
+                    if (!isAdded() || binding == null || approvedPost == null) return;
+                    currentPost.setContentFacebook(approvedPost.getContentFacebook());
+                    currentPost.setContentThreads(approvedPost.getContentThreads());
+                    currentPost.setImageUrl(approvedPost.getImageUrl());
+                    currentPost.setImagePrompt(approvedPost.getImagePrompt());
+                    currentPost.setImageVariantIndex(approvedPost.getImageVariantIndex());
+                    currentPost.setUserApproved(true);
+                    executeApprovedDemoOrOfflinePublish();
                 }
             });
-        });
-
-        binding.btnRewriteHook.setOnClickListener(v -> {
-            String currentText = binding.etReviewContent.getText().toString();
-            Toast.makeText(getContext(), "AI đang tạo Hook mở đầu mới...", Toast.LENGTH_SHORT).show();
-            orchestrator.rewriteSection(currentText, "HOOK", new AIAgentOrchestrator.RewriteCallback() {
-                @Override
-                public void onSuccess(String rewrittenText) {
-                    binding.etReviewContent.setText(rewrittenText);
-                    Toast.makeText(getContext(), "⚡ Đã đổi câu mở đầu hấp dẫn hơn!", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-                }
-            });
+            dialog.show(getParentFragmentManager(), "PreviewDialogFragment");
         });
 
         binding.btnRetryCurrentChannel.setOnClickListener(v -> {
@@ -510,11 +498,25 @@ public class CreatePostFragment extends Fragment {
 
             sheetBinding.cardOptThreadsApi.setOnClickListener(opt -> {
                 sheetDialog.dismiss();
+                PostReviewPolicy.PublishGateResult gate = PostReviewPolicy.evaluateSingleChannelPublishGate(
+                        threadsContent, SocialPlatform.THREADS, true
+                );
+                if (!gate.allowed) {
+                    showPublishBlockedDialog(gate);
+                    return;
+                }
                 openThreadsPublishDialog(threadsContent);
             });
 
             sheetBinding.cardOptFacebookApi.setOnClickListener(opt -> {
                 sheetDialog.dismiss();
+                PostReviewPolicy.PublishGateResult gate = PostReviewPolicy.evaluateSingleChannelPublishGate(
+                        fbContent, SocialPlatform.FACEBOOK, true
+                );
+                if (!gate.allowed) {
+                    showPublishBlockedDialog(gate);
+                    return;
+                }
                 openMetaGraphPublishDialog(fbContent);
             });
 
@@ -526,7 +528,7 @@ public class CreatePostFragment extends Fragment {
             sheetBinding.cardOptOpenFacebook.setOnClickListener(opt -> {
                 sheetDialog.dismiss();
                 com.tuankiet.myapplication.util.RealSocialPublisher.shareToRealApp(
-                        requireActivity(), com.tuankiet.myapplication.model.SocialPlatform.FACEBOOK, fbContent);
+                        requireActivity(), SocialPlatform.FACEBOOK, fbContent);
             });
 
             sheetBinding.btnOptShareSystem.setOnClickListener(opt -> {
@@ -544,14 +546,22 @@ public class CreatePostFragment extends Fragment {
         binding.btnPublishMetaApi.setOnClickListener(v -> {
             if (currentPost == null) return;
             String content = binding.etReviewContent.getText().toString();
+            PostReviewPolicy.PublishGateResult gate = PostReviewPolicy.evaluateSingleChannelPublishGate(
+                    content, SocialPlatform.FACEBOOK, true
+            );
+            if (!gate.allowed) {
+                showPublishBlockedDialog(gate);
+                return;
+            }
             openMetaGraphPublishDialog(content);
         });
 
-        // Save Draft
+        // Save Draft (Giữ nháp offline — KHÔNG đăng bài)
         binding.btnSaveDraft.setOnClickListener(v -> {
             if (currentPost != null) {
                 currentPost.setStatus(Post.STATUS_DRAFT);
-                MockDataRepository.getInstance(requireContext()).addPost(currentPost);
+                currentPost.setUserApproved(false);
+                MockDataRepository.getInstance(requireContext()).updatePost(currentPost);
                 Toast.makeText(getContext(), "Đã lưu bản nháp offline thành công!", Toast.LENGTH_LONG).show();
                 if (getActivity() instanceof MainActivity) {
                     ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
@@ -559,152 +569,422 @@ public class CreatePostFragment extends Fragment {
             }
         });
 
-        // Publish Now (F5 Autonomous Multi-channel Publishing & Offline Queue via WorkManager)
+        // Publish Now (CHỐT CHẶN AN TOÀN HUMAN-IN-THE-LOOP: bắt buộc xác nhận duyệt trước khi đăng)
         binding.btnPublishNow.setOnClickListener(v -> {
-            if (currentPost != null) {
-                // Đảm bảo có Idempotency Key duy nhất cho bài viết
-                if (currentPost.getIdempotencyKey() == null || currentPost.getIdempotencyKey().trim().isEmpty()) {
-                    currentPost.setIdempotencyKey(java.util.UUID.randomUUID().toString());
-                }
-
-                currentPost.setStatus(Post.STATUS_PENDING);
-
-                // Lưu vào SQLite
-                if (currentPost.getId() == 0) {
-                    long newId = com.tuankiet.myapplication.data.DatabaseHelper.getInstance(requireContext()).insertPost(currentPost);
-                    currentPost.setId(newId);
-                } else {
-                    com.tuankiet.myapplication.data.DatabaseHelper.getInstance(requireContext()).updatePost(currentPost);
-                }
-
-                boolean isOnline = com.tuankiet.myapplication.util.NetworkUtils.isNetworkAvailable(requireContext());
-                if (isOnline) {
-                    // Xuất bản trực tiếp qua WorkManager với theo dõi trạng thái Realtime
-                    androidx.appcompat.app.AlertDialog progressDialog = new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("🚀 Đang Xuất Bản Đa Kênh (F5)")
-                            .setMessage("WorkManager đang điều phối xuất bản đồng thời và kiểm tra chống trùng lặp (Idempotency)...\n\nVui lòng đợi trong giây lát.")
-                            .setCancelable(false)
-                            .create();
-                    progressDialog.show();
-
-                    java.util.UUID workId = com.tuankiet.myapplication.worker.PostPublisherWorker.schedulePostPublish(
-                            requireContext(),
-                            currentPost.getId(),
-                            currentPost.getIdempotencyKey()
-                    );
-
-                    androidx.work.WorkManager.getInstance(requireContext())
-                            .getWorkInfoByIdLiveData(workId)
-                            .observe(getViewLifecycleOwner(), workInfo -> {
-                                if (workInfo != null && workInfo.getState().isFinished()) {
-                                    if (progressDialog.isShowing()) {
-                                        progressDialog.dismiss();
-                                    }
-
-                                    Post updatedPost = com.tuankiet.myapplication.data.DatabaseHelper.getInstance(requireContext()).getPostById(currentPost.getId());
-                                    if (updatedPost == null) updatedPost = currentPost;
-
-                                    if (workInfo.getState() == androidx.work.WorkInfo.State.SUCCEEDED) {
-                                        com.tuankiet.myapplication.worker.CommentSyncWorker.scheduleSimulatedSync(requireContext(), 12);
-
-                                        StringBuilder sb = new StringBuilder();
-                                        sb.append("🎉 ĐÃ XUẤT BẢN THÀNH CÔNG ĐA KÊNH!\n\n");
-                                        sb.append("• Idempotency Key: ").append(updatedPost.getIdempotencyKey()).append("\n\n");
-
-                                        String primaryUrl = null;
-                                        if (updatedPost.isTargetFacebook()) {
-                                            String fbUrl = updatedPost.getFbPostUrl() != null ? updatedPost.getFbPostUrl() : "https://facebook.com/socialai/posts/" + System.currentTimeMillis() % 100000;
-                                            sb.append("• Facebook Page: ✅ ĐÃ ĐĂNG\n  URL: ").append(fbUrl).append("\n\n");
-                                            if (primaryUrl == null) primaryUrl = fbUrl;
-                                        }
-                                        if (updatedPost.isTargetThreads()) {
-                                            String thUrl = updatedPost.getThreadsPostUrl() != null ? updatedPost.getThreadsPostUrl() : "https://www.threads.net/@socialai/post/" + System.currentTimeMillis() % 100000;
-                                            sb.append("• Threads: ✅ ĐÃ ĐĂNG\n  URL: ").append(thUrl).append("\n\n");
-                                            if (primaryUrl == null) primaryUrl = thUrl;
-                                        }
-                                        if (updatedPost.isTargetLinkedIn()) {
-                                            sb.append("• LinkedIn: ✅ ĐÃ ĐĂNG\n\n");
-                                        }
-
-                                        sb.append("Bài viết đã được lưu vết trong SQLite và bắt đầu theo dõi bình luận tự động (F6).");
-
-                                        final String finalUrl = primaryUrl;
-                                        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                                .setTitle("🎉 Xuất Bản Tự Động Thành Công (F5)")
-                                                .setMessage(sb.toString())
-                                                .setCancelable(false);
-
-                                        if (finalUrl != null && (finalUrl.startsWith("http://") || finalUrl.startsWith("https://"))) {
-                                            builder.setPositiveButton("Mở bài viết gốc", (dialog, which) -> {
-                                                try {
-                                                    Intent openUrl = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(finalUrl));
-                                                    startActivity(openUrl);
-                                                } catch (Exception ignored) {}
-                                                if (getActivity() instanceof MainActivity) {
-                                                    ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
-                                                }
-                                            });
-                                            builder.setNegativeButton("Về Tổng quan", (dialog, which) -> {
-                                                if (getActivity() instanceof MainActivity) {
-                                                    ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
-                                                }
-                                            });
-                                        } else {
-                                            builder.setPositiveButton("Xem trên trang Tổng quan", (dialog, which) -> {
-                                                if (getActivity() instanceof MainActivity) {
-                                                    ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
-                                                }
-                                            });
-                                        }
-
-                                        builder.show();
-                                    } else {
-                                        String errorMsg = workInfo.getOutputData().getString(com.tuankiet.myapplication.worker.PostPublisherWorker.OUTPUT_ERROR_MESSAGE);
-                                        if (errorMsg == null || errorMsg.isEmpty()) errorMsg = updatedPost.getPublishError();
-                                        if (errorMsg == null || errorMsg.isEmpty()) errorMsg = "Lỗi xác thực hoặc máy chủ từ chối xuất bản bài viết.";
-
-                                        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                                .setTitle("⚠️ Lỗi Xuất Bản Đa Kênh (F5)")
-                                                .setMessage("Không thể hoàn tất đăng bài:\n\n" + errorMsg + "\n\nBài viết đã được đánh dấu trạng thái THẤT BẠI. Bạn có thể kiểm tra cấu hình tài khoản hoặc thử lại sau.")
-                                                .setPositiveButton("Đã hiểu", (dialog, which) -> {
-                                                    if (getActivity() instanceof MainActivity) {
-                                                        ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
-                                                    }
-                                                })
-                                                .show();
-                                    }
-                                }
-                            });
-                } else {
-                    // Chế độ Offline Queue
-                    com.tuankiet.myapplication.worker.PostPublisherWorker.schedulePostPublish(
-                            requireContext(),
-                            currentPost.getId(),
-                            currentPost.getIdempotencyKey()
-                    );
-                    com.tuankiet.myapplication.worker.PostPublisherWorker.scheduleOfflinePublisher(requireContext());
-
-                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("📡 Chế độ Ngoại Tuyến (Offline Queue)")
-                            .setMessage("Thiết bị hiện đang mất kết nối Internet.\n\n"
-                                    + "• Mã chống trùng lặp (Idempotency Key):\n  " + currentPost.getIdempotencyKey() + "\n\n"
-                                    + "• Quy chuẩn F5: Android WorkManager đã lưu bài viết vào hàng đợi ngoại tuyến với ràng buộc mạng CONNECTED và Exponential Backoff Retry.\n\n"
-                                    + "Ngay khi có mạng trở lại, hệ thống sẽ tự động xuất bản ngầm lên Facebook & Threads mà không làm trùng bài!")
-                            .setPositiveButton("Về trang Tổng quan", (dialog, which) -> {
-                                if (getActivity() instanceof MainActivity) {
-                                    ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
-                                }
-                            })
-                            .setCancelable(false)
-                            .show();
-                }
-            }
+            if (currentPost == null) return;
+            requestHumanApprovalBeforePublish();
         });
+    }
+
+    private SocialPlatform getActiveReviewPlatform() {
+        if (currentReviewPlatform == 1) return SocialPlatform.THREADS;
+        if (currentReviewPlatform == 2) return SocialPlatform.LINKEDIN;
+        return SocialPlatform.FACEBOOK;
+    }
+
+    private void updateCharCounterAndSafety(String content) {
+        if (binding == null || !isAdded()) return;
+        SocialPlatform platform = getActiveReviewPlatform();
+        PostReviewPolicy.CharCountResult countResult = PostReviewPolicy.evaluateCharCount(content, platform);
+        binding.tvCharCounter.setText(countResult.formattedCounter);
+
+        if (countResult.isOverLimit) {
+            binding.tvCharCounter.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_red));
+        } else if (countResult.isNearLimit) {
+            binding.tvCharCounter.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_amber));
+        } else {
+            binding.tvCharCounter.setTextColor(Color.parseColor("#64748B"));
+        }
+
+        AIAgentOrchestrator.SafetyCheckResult safety = orchestrator.checkContentSafety(content);
+        if (safety.hasWarning && safety.warningMessage != null) {
+            binding.cardContentWarning.setVisibility(View.VISIBLE);
+            binding.tvContentWarningText.setText(safety.warningMessage);
+        } else {
+            binding.cardContentWarning.setVisibility(View.GONE);
+        }
+    }
+
+    private void performRealAiRewrite(String instructionType) {
+        if (binding == null || isRewriteBusy) return;
+
+        String fullText = binding.etReviewContent.getText() != null
+                ? binding.etReviewContent.getText().toString()
+                : "";
+        if (fullText.trim().isEmpty()) {
+            Toast.makeText(getContext(), "Nội dung bài viết đang trống!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int rawStart = binding.etReviewContent.getSelectionStart();
+        int rawEnd = binding.etReviewContent.getSelectionEnd();
+        int selStart = Math.max(0, Math.min(rawStart, rawEnd));
+        int selEnd = Math.max(0, Math.max(rawStart, rawEnd));
+        boolean hasPartialSelection = (selEnd > selStart)
+                && (selEnd <= fullText.length())
+                && !PostReviewPolicy.REWRITE_HOOK.equalsIgnoreCase(instructionType)
+                && !fullText.substring(selStart, selEnd).trim().isEmpty()
+                && !fullText.substring(selStart, selEnd).trim().equals(fullText.trim());
+
+        String selectedSection = hasPartialSelection ? fullText.substring(selStart, selEnd) : null;
+        SocialPlatform activePlatform = getActiveReviewPlatform();
+        String actionName = PostReviewPolicy.getInstructionDisplayName(instructionType);
+        String scopeLabel = hasPartialSelection ? "đoạn đã chọn" : "bài viết (" + activePlatform.getShortName() + ")";
+
+        setReviewRewriteLoading(true, "AI đang xử lý \"" + actionName + "\" cho " + scopeLabel + "...");
+
+        orchestrator.rewriteSection(
+                fullText,
+                selectedSection,
+                instructionType,
+                activePlatform,
+                currentPost != null ? currentPost.getLanguage() : "Tiếng Việt",
+                new AIAgentOrchestrator.RewriteCallback() {
+                    @Override
+                    public void onSuccess(String rewrittenText) {
+                        onSuccessWithMeta(rewrittenText, true, "AI");
+                    }
+
+                    @Override
+                    public void onSuccessWithMeta(String rewrittenText, boolean usedRealLlm, String providerName) {
+                        if (!isAdded() || binding == null) return;
+                        setReviewRewriteLoading(false, null);
+
+                        previousReviewTextBeforeRewrite = fullText;
+                        binding.btnUndoRewrite.setVisibility(View.VISIBLE);
+
+                        String finalUpdated = hasPartialSelection
+                                ? PostReviewPolicy.applySectionReplacement(fullText, selStart, selEnd, rewrittenText)
+                                : rewrittenText;
+
+                        binding.etReviewContent.setText(finalUpdated);
+                        binding.etReviewContent.setSelection(binding.etReviewContent.getText().length());
+                        updateCharCounterAndSafety(finalUpdated);
+
+                        String toastMsg = usedRealLlm
+                                ? "✨ " + providerName + " đã cập nhật \"" + actionName + "\"!"
+                                : "✨ Đã cập nhật \"" + actionName + "\" (Chế độ Demo)";
+                        Toast.makeText(getContext(), toastMsg, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        if (!isAdded() || binding == null) return;
+                        setReviewRewriteLoading(false, null);
+                        Toast.makeText(getContext(), "⚠️ " + error, Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+    }
+
+    private void setReviewRewriteLoading(boolean loading, String statusMessage) {
+        isRewriteBusy = loading;
+        if (binding == null) return;
+        binding.layoutRewriteLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+        if (statusMessage != null) {
+            binding.tvRewriteLoadingText.setText(statusMessage);
+        }
+        binding.btnRewriteShorter.setEnabled(!loading);
+        binding.btnRewriteFormal.setEnabled(!loading);
+        binding.btnRewriteHook.setEnabled(!loading);
+        binding.btnPublishNow.setEnabled(!loading && !isImageRegenBusy);
+    }
+
+    private void triggerRegenerateImage() {
+        if (binding == null || currentPost == null || isImageRegenBusy) return;
+
+        String currentContent = binding.etReviewContent.getText() != null
+                ? binding.etReviewContent.getText().toString()
+                : "";
+        SocialPlatform platform = getActiveReviewPlatform();
+        int nextVariant = currentPost.getImageVariantIndex() + 1;
+
+        setReviewImageLoading(true);
+        orchestrator.regeneratePostImage(
+                currentPost.getTopic(),
+                currentContent,
+                platform,
+                currentPost.getImagePrompt(),
+                nextVariant,
+                new AIAgentOrchestrator.ImageGenerationCallback() {
+                    @Override
+                    public void onSuccess(PostIllustrationGenerator.GeneratedIllustration illustration) {
+                        if (!isAdded() || binding == null) return;
+                        currentPost.setImageUrl(illustration.imageUri);
+                        currentPost.setImagePrompt(illustration.imagePrompt);
+                        currentPost.setImageVariantIndex(illustration.variantIndex);
+                        currentPost.setUserApproved(false);
+
+                        bindReviewImage(currentPost, illustration.sourceLabel);
+
+                        String msg = illustration.generatedByRealImageApi
+                                ? "🎨 Đã sinh ảnh minh họa AI mới thành công!"
+                                : "🎨 Đã tạo ảnh minh họa mới (" + illustration.sourceLabel + ")!";
+                        Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        if (!isAdded() || binding == null) return;
+                        setReviewImageLoading(false);
+                        Toast.makeText(getContext(), "⚠️ " + error, Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+    }
+
+    private void setReviewImageLoading(boolean loading) {
+        isImageRegenBusy = loading;
+        if (binding == null) return;
+        binding.overlayReviewImageLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+        binding.btnRegenerateImage.setEnabled(!loading);
+        binding.btnRegenerateImage.setText(loading ? "Đang sinh..." : "🔄 Sinh lại ảnh");
+        binding.btnPublishNow.setEnabled(!loading && !isRewriteBusy);
+    }
+
+    private void bindReviewImage(Post post, String customSourceLabel) {
+        if (binding == null || post == null || !isAdded()) return;
+        binding.tvImagePromptPreview.setText(
+                post.getImagePrompt() != null && !post.getImagePrompt().trim().isEmpty()
+                        ? "Prompt ảnh: " + post.getImagePrompt().trim()
+                        : "Prompt ảnh: Minimal 3D tech illustration"
+        );
+        String sourceLabel = (customSourceLabel != null && !customSourceLabel.isEmpty())
+                ? customSourceLabel
+                : "Visual Agent • Concept #" + (post.getImageVariantIndex() + 1);
+        binding.tvImageSourceBadge.setText(sourceLabel);
+
+        PostIllustrationGenerator.loadIntoImageView(
+                requireContext(),
+                post.getImageUrl(),
+                binding.ivReviewImagePreview,
+                () -> {
+                    if (isAdded() && binding != null) {
+                        setReviewImageLoading(false);
+                    }
+                }
+        );
+    }
+
+    private void requestHumanApprovalBeforePublish() {
+        if (currentPost == null || binding == null) return;
+
+        // Pre-validate with a temporary probe so user gets clear feedback before approval dialog
+        boolean previousApproved = currentPost.isUserApproved();
+        currentPost.setUserApproved(true);
+        PostReviewPolicy.PublishGateResult gate = PostReviewPolicy.evaluatePublishGate(currentPost, true);
+        currentPost.setUserApproved(previousApproved);
+
+        if (!gate.allowed) {
+            showPublishBlockedDialog(gate);
+            return;
+        }
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("Bạn xác nhận đã duyệt nội dung & ảnh minh họa để hệ thống tiến hành đăng bài?\n\n");
+        if (currentPost.isTargetFacebook()) {
+            PostReviewPolicy.CharCountResult fbCount = PostReviewPolicy.evaluateCharCount(
+                    currentPost.getContentFacebook(), SocialPlatform.FACEBOOK);
+            summary.append("• Facebook Page: ").append(fbCount.formattedCounter).append(" ✅\n");
+        }
+        if (currentPost.isTargetThreads()) {
+            PostReviewPolicy.CharCountResult thCount = PostReviewPolicy.evaluateCharCount(
+                    currentPost.getContentThreads(), SocialPlatform.THREADS);
+            summary.append("• Threads: ").append(thCount.formattedCounter).append(" ✅\n");
+        }
+        if (currentPost.isTargetLinkedIn()) {
+            PostReviewPolicy.CharCountResult liCount = PostReviewPolicy.evaluateCharCount(
+                    currentPost.getContentLinkedIn(), SocialPlatform.LINKEDIN);
+            summary.append("• LinkedIn: ").append(liCount.formattedCounter).append(" ✅\n");
+        }
+        summary.append("• Ảnh minh họa: Concept #").append(currentPost.getImageVariantIndex() + 1).append("\n");
+
+        if (gate.hasSafetyWarning && gate.safetyWarningMessage != null) {
+            summary.append("\n⚠️ CẢNH BÁO AN TOÀN NỘI DUNG:\n").append(gate.safetyWarningMessage);
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("🛡️ Xác nhận duyệt bài (Human-in-the-loop)")
+                .setMessage(summary.toString())
+                .setNegativeButton("Quay lại chỉnh sửa", null)
+                .setPositiveButton("✅ Xác nhận duyệt & Đăng", (dialog, which) -> {
+                    currentPost.setUserApproved(true);
+                    executeApprovedDemoOrOfflinePublish();
+                })
+                .show();
+    }
+
+    private void showPublishBlockedDialog(PostReviewPolicy.PublishGateResult gate) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
+                .setTitle("⛔ Chặn xuất bản — Cần chỉnh sửa")
+                .setMessage(gate.blockReason)
+                .setPositiveButton("Đóng & Sửa bài", null);
+
+        if (PostReviewPolicy.CODE_THREADS_LIMIT_EXCEEDED.equals(gate.code)) {
+            builder.setNeutralButton("✂️ Dùng AI rút gọn Threads", (d, w) -> {
+                TabLayout.Tab threadsTab = binding != null ? binding.tabPlatformReview.getTabAt(1) : null;
+                if (threadsTab != null) {
+                    threadsTab.select();
+                }
+                performRealAiRewrite(PostReviewPolicy.REWRITE_SHORTER);
+            });
+        }
+        builder.show();
+    }
+
+    private void executeApprovedDemoOrOfflinePublish() {
+        if (currentPost == null) return;
+
+        // Defense-in-depth: strictly re-verify Human-in-the-loop gate before mutating status
+        PostReviewPolicy.PublishGateResult finalGate = PostReviewPolicy.evaluatePublishGate(currentPost, currentPost.isUserApproved());
+        if (!finalGate.allowed) {
+            showPublishBlockedDialog(finalGate);
+            return;
+        }
+
+        // Đảm bảo có Idempotency Key duy nhất cho bài viết
+        if (currentPost.getIdempotencyKey() == null || currentPost.getIdempotencyKey().trim().isEmpty()) {
+            currentPost.setIdempotencyKey(java.util.UUID.randomUUID().toString());
+        }
+
+        currentPost.setStatus(Post.STATUS_PENDING);
+
+        // Lưu vào SQLite
+        if (currentPost.getId() == 0) {
+            long newId = com.tuankiet.myapplication.data.DatabaseHelper.getInstance(requireContext()).insertPost(currentPost);
+            currentPost.setId(newId);
+        } else {
+            com.tuankiet.myapplication.data.DatabaseHelper.getInstance(requireContext()).updatePost(currentPost);
+        }
+
+        boolean isOnline = com.tuankiet.myapplication.util.NetworkUtils.isNetworkAvailable(requireContext());
+        if (isOnline) {
+            // Xuất bản trực tiếp qua WorkManager với theo dõi trạng thái Realtime
+            AlertDialog progressDialog = new AlertDialog.Builder(requireContext())
+                    .setTitle("🚀 Đang Xuất Bản Đa Kênh (F5)")
+                    .setMessage("WorkManager đang điều phối xuất bản đồng thời và kiểm tra chống trùng lặp (Idempotency)...\n\nVui lòng đợi trong giây lát.")
+                    .setCancelable(false)
+                    .create();
+            progressDialog.show();
+
+            java.util.UUID workId = com.tuankiet.myapplication.worker.PostPublisherWorker.schedulePostPublish(
+                    requireContext(),
+                    currentPost.getId(),
+                    currentPost.getIdempotencyKey()
+            );
+
+            androidx.work.WorkManager.getInstance(requireContext())
+                    .getWorkInfoByIdLiveData(workId)
+                    .observe(getViewLifecycleOwner(), workInfo -> {
+                        if (workInfo != null && workInfo.getState().isFinished()) {
+                            if (progressDialog.isShowing()) {
+                                progressDialog.dismiss();
+                            }
+
+                            Post updatedPost = com.tuankiet.myapplication.data.DatabaseHelper.getInstance(requireContext()).getPostById(currentPost.getId());
+                            if (updatedPost == null) updatedPost = currentPost;
+
+                            if (workInfo.getState() == androidx.work.WorkInfo.State.SUCCEEDED) {
+                                com.tuankiet.myapplication.worker.CommentSyncWorker.scheduleSimulatedSync(requireContext(), 12);
+
+                                StringBuilder sb = new StringBuilder();
+                                sb.append("🎉 ĐÃ XUẤT BẢN THÀNH CÔNG ĐA KÊNH!\n\n");
+                                sb.append("• Idempotency Key: ").append(updatedPost.getIdempotencyKey()).append("\n\n");
+
+                                String primaryUrl = null;
+                                if (updatedPost.isTargetFacebook()) {
+                                    String fbUrl = updatedPost.getFbPostUrl() != null ? updatedPost.getFbPostUrl() : "https://facebook.com/socialai/posts/" + System.currentTimeMillis() % 100000;
+                                    sb.append("• Facebook Page: ✅ ĐÃ ĐĂNG\n  URL: ").append(fbUrl).append("\n\n");
+                                    if (primaryUrl == null) primaryUrl = fbUrl;
+                                }
+                                if (updatedPost.isTargetThreads()) {
+                                    String thUrl = updatedPost.getThreadsPostUrl() != null ? updatedPost.getThreadsPostUrl() : "https://www.threads.net/@socialai/post/" + System.currentTimeMillis() % 100000;
+                                    sb.append("• Threads: ✅ ĐÃ ĐĂNG\n  URL: ").append(thUrl).append("\n\n");
+                                    if (primaryUrl == null) primaryUrl = thUrl;
+                                }
+                                if (updatedPost.isTargetLinkedIn()) {
+                                    sb.append("• LinkedIn: ✅ ĐÃ ĐĂNG\n\n");
+                                }
+
+                                sb.append("Bài viết đã được lưu vết trong SQLite và bắt đầu theo dõi bình luận tự động (F6).");
+
+                                final String finalUrl = primaryUrl;
+                                AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
+                                        .setTitle("🎉 Đã Duyệt & Xuất Bản Thành Công (F5)")
+                                        .setMessage(sb.toString())
+                                        .setCancelable(false);
+
+                                if (finalUrl != null && (finalUrl.startsWith("http://") || finalUrl.startsWith("https://"))) {
+                                    builder.setPositiveButton("Mở bài viết gốc", (dialog, which) -> {
+                                        try {
+                                            Intent openUrl = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(finalUrl));
+                                            startActivity(openUrl);
+                                        } catch (Exception ignored) {}
+                                        if (getActivity() instanceof MainActivity) {
+                                            ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                                        }
+                                    });
+                                    builder.setNegativeButton("Về Tổng quan", (dialog, which) -> {
+                                        if (getActivity() instanceof MainActivity) {
+                                            ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                                        }
+                                    });
+                                } else {
+                                    builder.setPositiveButton("Xem trên trang Tổng quan", (dialog, which) -> {
+                                        if (getActivity() instanceof MainActivity) {
+                                            ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                                        }
+                                    });
+                                }
+
+                                builder.show();
+                            } else {
+                                String errorMsg = workInfo.getOutputData().getString(com.tuankiet.myapplication.worker.PostPublisherWorker.OUTPUT_ERROR_MESSAGE);
+                                if (errorMsg == null || errorMsg.isEmpty()) errorMsg = updatedPost.getPublishError();
+                                if (errorMsg == null || errorMsg.isEmpty()) errorMsg = "Lỗi xác thực hoặc máy chủ từ chối xuất bản bài viết.";
+
+                                new AlertDialog.Builder(requireContext())
+                                        .setTitle("⚠️ Lỗi Xuất Bản Đa Kênh (F5)")
+                                        .setMessage("Không thể hoàn tất đăng bài:\n\n" + errorMsg + "\n\nBài viết đã được đánh dấu trạng thái THẤT BẠI. Bạn có thể kiểm tra cấu hình tài khoản hoặc thử lại sau.")
+                                        .setPositiveButton("Đã hiểu", (dialog, which) -> {
+                                            if (getActivity() instanceof MainActivity) {
+                                                ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                                            }
+                                        })
+                                        .show();
+                            }
+                        }
+                    });
+        } else {
+            // Chế độ Offline Queue
+            com.tuankiet.myapplication.worker.PostPublisherWorker.schedulePostPublish(
+                    requireContext(),
+                    currentPost.getId(),
+                    currentPost.getIdempotencyKey()
+            );
+            com.tuankiet.myapplication.worker.PostPublisherWorker.scheduleOfflinePublisher(requireContext());
+
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("📡 Chế độ Ngoại Tuyến (Offline Queue)")
+                    .setMessage("Thiết bị hiện đang mất kết nối Internet.\n\n"
+                            + "• Mã chống trùng lặp (Idempotency Key):\n  " + currentPost.getIdempotencyKey() + "\n\n"
+                            + "• Quy chuẩn F5: Android WorkManager đã lưu bài viết vào hàng đợi ngoại tuyến với ràng buộc mạng CONNECTED và Exponential Backoff Retry.\n\n"
+                            + "Ngay khi có mạng trở lại, hệ thống sẽ tự động xuất bản ngầm lên Facebook & Threads mà không làm trùng bài!")
+                    .setPositiveButton("Về trang Tổng quan", (dialog, which) -> {
+                        if (getActivity() instanceof MainActivity) {
+                            ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                        }
+                    })
+                    .setCancelable(false)
+                    .show();
+        }
     }
 
     private void bindReviewData(Post post) {
         if (post == null || binding == null) return;
-        binding.tvImagePromptPreview.setText(post.getImagePrompt() != null ? post.getImagePrompt() : "Tech 3D vector illustration");
+        previousReviewTextBeforeRewrite = null;
+        binding.btnUndoRewrite.setVisibility(View.GONE);
+        bindReviewImage(post, null);
 
         if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
             binding.cardReviewImage.setVisibility(View.VISIBLE);
@@ -723,7 +1003,7 @@ public class CreatePostFragment extends Fragment {
         } else if (post.isTargetThreads()) {
             currentReviewPlatform = 1;
         } else {
-            currentReviewPlatform = 2;
+            currentReviewPlatform = 0;
         }
         isViewingFacebookTab = (currentReviewPlatform == 0);
 
@@ -736,22 +1016,28 @@ public class CreatePostFragment extends Fragment {
     private void updateReviewTabContent() {
         if (currentPost == null || binding == null) return;
 
+        String contentToShow;
         if (currentReviewPlatform == 0) {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_facebook);
             binding.tvReviewAuthorName.setText("AI Tech Vietnam (Facebook Page)");
             binding.tvReviewSubInfo.setText("Vừa xong • 🌐 Công khai");
-            binding.etReviewContent.setText(currentPost.getContentFacebook());
+            contentToShow = currentPost.getContentFacebook();
         } else if (currentReviewPlatform == 1) {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_threads);
             binding.tvReviewAuthorName.setText("@aitech_vietnam (Threads)");
             binding.tvReviewSubInfo.setText("Vừa xong • 🧵 Cuộc trò chuyện mở");
-            binding.etReviewContent.setText(currentPost.getContentThreads());
+            contentToShow = currentPost.getContentThreads();
         } else {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_linkedin);
             binding.tvReviewAuthorName.setText("Nguyen Van A (Tech Lead)");
             binding.tvReviewSubInfo.setText("Vừa xong • 👔 Kết nối mạng lưới");
-            binding.etReviewContent.setText(currentPost.getContentLinkedIn());
+            contentToShow = currentPost.getContentLinkedIn();
         }
+
+        isSyncingReviewEditor = true;
+        binding.etReviewContent.setText(contentToShow);
+        isSyncingReviewEditor = false;
+        updateCharCounterAndSafety(contentToShow);
     }
 
     private void openThreadsPublishDialog(String content) {
@@ -932,7 +1218,7 @@ public class CreatePostFragment extends Fragment {
                 public void onError(String errorMessage) {
                     if (getContext() == null) return;
                     new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("⚠️ Chi tiết lỗi từ Threads API")
+                            .setTitle("⚠️ Chi tiết lỗi từ Facebook Graph API")
                             .setMessage(errorMessage)
                             .setPositiveButton("Đóng", null)
                             .show();
