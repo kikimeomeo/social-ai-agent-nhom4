@@ -11,8 +11,10 @@ import com.google.gson.JsonParser;
 import com.tuankiet.myapplication.data.DatabaseHelper;
 import com.tuankiet.myapplication.data.SecurePreferenceManager;
 import com.tuankiet.myapplication.model.AgentLog;
+import com.tuankiet.myapplication.model.CommentItem;
 import com.tuankiet.myapplication.model.LLMConfig;
 import com.tuankiet.myapplication.model.Post;
+import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.util.FallbackImageTemplateGenerator;
 import com.tuankiet.myapplication.util.VisualImageService;
 
@@ -54,6 +56,10 @@ public class AIAgentOrchestrator {
     public interface RewriteCallback {
         void onSuccess(String rewrittenText);
         void onError(String error);
+    }
+
+    public interface CommentAnalysisCallback {
+        void onResult(CommentSafetyPolicy.CommentAnalysis analysis);
     }
 
     public static class SafetyCheckResult {
@@ -456,38 +462,103 @@ public class AIAgentOrchestrator {
         });
     }
 
-    // --- AI AGENT AUTO-REPLY TO SOCIAL COMMENTS (F6) ---
-    public String generateSmartCommentReplySync(String postText, String commenterUsername, String commentText) {
+    // --- AI COMMENT CLASSIFICATION (5 CATEGORIES) + CONTEXTUAL REPLY + SAFETY CHECK (F6) ---
+    public static final String SYSTEM_PROMPT_COMMENT_AGENT =
+            "Bạn là AI Community Analyst chuyên phân loại bình luận và soạn phản hồi an toàn cho Facebook Page và Meta Threads.\n" +
+            "Nhiệm vụ:\n" +
+            "1. Phân loại bình luận vào ĐÚNG 1 trong 5 nhóm: QUESTION (Câu hỏi), PRAISE (Khen ngợi), SUGGESTION (Góp ý cải thiện), NEGATIVE (Tiêu cực / phàn nàn / công kích), SPAM (Quảng cáo rác / link lừa đảo).\n" +
+            "2. Xác định is_faq = true CHỈ KHI category là QUESTION và đó là câu hỏi thường gặp đơn giản có thể trả lời rõ ràng từ ngữ cảnh bài viết; đặt false nếu là câu hỏi chuyên sâu, pháp lý, hợp đồng, khiếu nại hoặc mơ hồ.\n" +
+            "3. Xác định has_personal_info = true nếu bình luận chứa số điện thoại, email, CCCD/CMND, địa chỉ nhà, số tài khoản hoặc dữ liệu cá nhân nhạy cảm.\n" +
+            "4. Đánh giá confidence (0.0 đến 1.0). Nếu bình luận mơ hồ, mỉa mai, thiếu ngữ cảnh hoặc bạn chưa chắc chắn, đặt confidence < 0.75.\n" +
+            "5. Soạn suggested_reply bằng tiếng Việt ngắn gọn (1-2 câu, đúng ngữ cảnh bài viết, thân thiện, với Threads < 300 ký tự). Nếu SPAM thì suggested_reply là null. Nếu has_personal_info là true thì gợi ý lịch sự mời khách nhắn tin riêng (DM/Inbox), không lặp lại thông tin cá nhân.\n" +
+            "CHỈ trả về duy nhất 1 JSON object hợp lệ với cấu trúc:\n" +
+            "{\"category\":\"QUESTION|PRAISE|SUGGESTION|NEGATIVE|SPAM\",\"is_faq\":false,\"has_personal_info\":false,\"confidence\":0.92,\"risk_warning\":null,\"suggested_reply\":\"...\"}";
+
+    public CommentSafetyPolicy.CommentAnalysis analyzeCommentSync(SocialPlatform platform,
+                                                                  String postTitle,
+                                                                  String postContent,
+                                                                  String authorName,
+                                                                  String commentText) {
+        String safeTitle = postTitle != null ? postTitle : "";
+        String safePostContent = postContent != null ? postContent : "";
+        if (safePostContent.trim().isEmpty() && !safeTitle.trim().isEmpty()) {
+            String fromDb = DatabaseHelper.getInstance(context).findPostContentByTitle(safeTitle);
+            if (fromDb != null) {
+                safePostContent = fromDb;
+            }
+        }
+        String clippedContext = safePostContent.length() > 600
+                ? safePostContent.substring(0, 600) + "..."
+                : safePostContent;
+
         try {
             SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
             LLMConfig config = prefManager.getConfig();
-            boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+            boolean useRealApi = !config.isDemoMode()
+                    && config.getApiKey() != null
+                    && !config.getApiKey().trim().isEmpty();
 
             if (useRealApi) {
-                String systemPrompt = "Bạn là AI Agent quản trị kênh mạng xã hội Threads chuyên nghiệp, thân thiện. " +
-                        "Hãy viết câu trả lời ngắn gọn (1-2 câu, dưới 250 ký tự), tự nhiên, lịch sự bằng tiếng Việt để phản hồi bình luận của độc giả. " +
-                        "Chỉ trả về đúng nội dung câu trả lời, không để trong ngoặc kép.";
-                String prompt = "Bài viết gốc: \"" + postText + "\"\n" +
-                        "Người bình luận @" + commenterUsername + " viết: \"" + commentText + "\"\n" +
-                        "Hãy viết câu trả lời phù hợp nhất:";
-                String aiReply = callLlmApi(config, prompt, systemPrompt, config.getCommentClassificationModel()).trim();
-                if (aiReply.startsWith("\"") && aiReply.endsWith("\"") && aiReply.length() > 2) {
-                    aiReply = aiReply.substring(1, aiReply.length() - 1).trim();
-                }
-                if (aiReply.length() > 450) {
-                    aiReply = aiReply.substring(0, 445) + "...";
-                }
-                logStep("Auto-Reply Sub-agent", "Threads Comment Agent", "Comment: " + commentText, aiReply, 180, 0.0005);
-                prefManager.addTokens(180, 0.0005);
-                return aiReply;
+                String channelLabel = platform != null ? platform.getDisplayName() : "Social Media";
+                String prompt = "Kênh: " + channelLabel + "\n" +
+                        "Tiêu đề bài viết: \"" + safeTitle + "\"\n" +
+                        (clippedContext.isEmpty() ? "" : "Nội dung bài viết (ngữ cảnh): \"" + clippedContext + "\"\n") +
+                        "Người bình luận: " + (authorName != null ? authorName : "Độc giả") + "\n" +
+                        "Nội dung bình luận: \"" + (commentText != null ? commentText : "") + "\"\n" +
+                        "Hãy phân loại vào 5 nhóm và soạn gợi ý trả lời theo đúng định dạng JSON:";
+
+                String rawJson = callLlmApi(config, prompt, SYSTEM_PROMPT_COMMENT_AGENT, config.getCommentClassificationModel());
+                int tokens = lastCallTokens > 0 ? lastCallTokens : 220;
+                CommentSafetyPolicy.CommentAnalysis parsed = CommentSafetyPolicy.parseLlmAnalysisJson(
+                        rawJson, platform, safeTitle, clippedContext, authorName, commentText
+                );
+                logStep(
+                        "Comment AI Classifier & Reply",
+                        "Community AI Agent",
+                        "[" + channelLabel + "] " + commentText,
+                        "Category=" + parsed.category + ", FAQ=" + parsed.isFaq
+                                + ", PII=" + parsed.hasPersonalInfo
+                                + ", Conf=" + String.format("%.2f", parsed.confidence),
+                        tokens,
+                        tokens * 0.000004
+                );
+                prefManager.addTokens(tokens, tokens * 0.000004);
+                return parsed;
             }
         } catch (Exception ignored) {
-            // Fallback below if quota/network error
+            // Fallback to deterministic local analyzer below if offline or quota error
         }
 
-        String lower = commentText.toLowerCase();
-        if (lower.contains("?") || lower.contains("sao") || lower.contains("như nào") || lower.contains("ntn") || lower.contains("giá") || lower.contains("bao nhiêu")) {
-            return "Chào @" + commenterUsername + ", cảm ơn câu hỏi rất hay của bạn! Mình đã ghi nhận và xin gửi thông tin giải đáp chi tiết ngay nhé ✨";
+        return CommentSafetyPolicy.analyzeCommentLocally(
+                platform, safeTitle, clippedContext, authorName, commentText
+        );
+    }
+
+    public void analyzeCommentAsync(CommentItem item, CommentAnalysisCallback callback) {
+        if (item == null || callback == null) return;
+        executorService.execute(() -> {
+            CommentSafetyPolicy.CommentAnalysis analysis = analyzeCommentSync(
+                    item.getPlatform(),
+                    item.getPostTitle(),
+                    item.getPostContent(),
+                    item.getAuthorName(),
+                    item.getContent()
+            );
+            mainHandler.post(() -> callback.onResult(analysis));
+        });
+    }
+
+    // --- AI AGENT AUTO-REPLY TO SOCIAL COMMENTS (F6 - Backward-compatible helper) ---
+    public String generateSmartCommentReplySync(String postText, String commenterUsername, String commentText) {
+        CommentSafetyPolicy.CommentAnalysis analysis = analyzeCommentSync(
+                SocialPlatform.THREADS,
+                postText,
+                postText,
+                commenterUsername,
+                commentText
+        );
+        if (analysis.suggestedReply != null && !analysis.suggestedReply.trim().isEmpty()) {
+            return analysis.suggestedReply;
         }
         return "Cảm ơn @" + commenterUsername + " rất nhiều vì đã quan tâm và để lại bình luận tương tác trên kênh nhé! 🙌✨";
     }

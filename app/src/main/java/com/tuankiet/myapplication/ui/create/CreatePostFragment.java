@@ -891,6 +891,15 @@ public class CreatePostFragment extends Fragment {
                 com.tuankiet.myapplication.databinding.DialogMetaGraphPublishBinding.inflate(getLayoutInflater());
         metaDialog.setContentView(dialogBinding.getRoot());
 
+        com.tuankiet.myapplication.data.SecurePreferenceManager prefs =
+                com.tuankiet.myapplication.data.SecurePreferenceManager.getInstance(requireContext());
+        if (!prefs.getFacebookPageId().isEmpty()) {
+            dialogBinding.etMetaPageId.setText(prefs.getFacebookPageId());
+        }
+        if (!prefs.getFacebookPageToken().isEmpty()) {
+            dialogBinding.etMetaAccessToken.setText(prefs.getFacebookPageToken());
+        }
+
         dialogBinding.btnCancelMetaDialog.setOnClickListener(d -> metaDialog.dismiss());
         dialogBinding.btnSubmitMetaPublish.setOnClickListener(d -> {
             String pageId = dialogBinding.etMetaPageId.getText().toString().trim();
@@ -900,6 +909,8 @@ public class CreatePostFragment extends Fragment {
                 Toast.makeText(getContext(), "Vui lòng nhập Page ID và Page Token!", Toast.LENGTH_SHORT).show();
                 return;
             }
+
+            prefs.saveFacebookPageCredentials(pageId, token);
 
             Toast.makeText(getContext(), "Đang gửi request lên Meta Graph API...", Toast.LENGTH_SHORT).show();
             com.tuankiet.myapplication.util.RealSocialPublisher.postToFacebookPageViaApi(pageId, token, content, new com.tuankiet.myapplication.util.RealSocialPublisher.ApiPublishCallback() {

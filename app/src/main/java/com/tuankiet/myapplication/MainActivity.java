@@ -47,7 +47,10 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Mock Data Repository on launch
         MockDataRepository.getInstance(this);
 
-        // Khởi động bộ quét bình luận Threads tự động mỗi 12 giây & AI Agent tự động trả lời
+        // Đăng ký đồng bộ bình luận ngầm định kỳ bằng WorkManager (CommentSyncWorker)
+        com.tuankiet.myapplication.worker.CommentSyncWorker.schedulePeriodicSync(this);
+
+        // Khởi động bộ quét bình luận khi app đang mở kết hợp cơ chế tự động trả lời có kiểm soát
         com.tuankiet.myapplication.util.RealSocialPublisher.startAutoCommentScanner(this);
 
         setupBottomNavigation();
@@ -68,6 +71,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleIncomingIntent(Intent intent) {
+        if (intent != null && intent.hasExtra(com.tuankiet.myapplication.util.NotificationHelper.EXTRA_COMMENT_ID)) {
+            long commentId = intent.getLongExtra(com.tuankiet.myapplication.util.NotificationHelper.EXTRA_COMMENT_ID, -1L);
+            if (commentId > 0) {
+                inboxFragment.openCommentByIdWhenReady(commentId);
+            }
+        }
+
         if (intent != null && intent.hasExtra("target_tab")) {
             int targetTab = intent.getIntExtra("target_tab", 0);
             if (targetTab != 0) {

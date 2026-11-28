@@ -7,7 +7,7 @@
     android:background="@color/bg_main"
     android:orientation="vertical">
 
-    <!-- Top Header -->
+    <!-- Top Header + Filters + Controlled Auto-Reply Panel -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -41,25 +41,41 @@
                     android:layout_height="2.5dp"
                     android:layout_marginTop="3dp"
                     android:background="@drawable/bg_soft_underline" />
+
+                <TextView
+                    android:id="@+id/tvSyncStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="Đồng bộ nền định kỳ 15p • WorkManager"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
             </LinearLayout>
 
             <TextView
+                android:id="@+id/tvRefreshInbox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_soft_pill"
+                android:backgroundTint="@color/bg_soft_fill"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
                 android:text="↻ Làm mới"
                 android:textColor="@color/primary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Full-width 3-equal Segmented Channel Filter Pill -->
+        <!-- Filter 1: Channel (Tất cả / Facebook / Threads) -->
         <com.google.android.material.card.MaterialCardView
             style="@style/SocialCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="2dp">
+            app:cardElevation="1.5dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -104,6 +120,107 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Filter 2: Status (Tất cả / Chưa trả lời / Đã trả lời) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7dp"
+            android:background="@drawable/bg_soft_pill"
+            android:backgroundTint="@color/bg_soft_alt"
+            android:orientation="horizontal"
+            android:padding="3dp">
+
+            <TextView
+                android:id="@+id/tabStatusAll"
+                android:layout_width="0dp"
+                android:layout_height="26dp"
+                android:layout_weight="0.9"
+                android:background="@drawable/bg_soft_pill"
+                android:backgroundTint="@color/card_bg"
+                android:gravity="center"
+                android:text="Tất cả"
+                android:textColor="@color/primary_dark"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tabStatusUnanswered"
+                android:layout_width="0dp"
+                android:layout_height="26dp"
+                android:layout_weight="1.1"
+                android:gravity="center"
+                android:text="Chưa trả lời"
+                android:textColor="@color/text_muted"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tabStatusAnswered"
+                android:layout_width="0dp"
+                android:layout_height="26dp"
+                android:layout_weight="1.0"
+                android:gravity="center"
+                android:text="Đã trả lời"
+                android:textColor="@color/text_muted"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Filter 3: Post Selector Pill -->
+        <LinearLayout
+            android:id="@+id/layoutPostFilter"
+            android:layout_width="match_parent"
+            android:layout_height="34dp"
+            android:layout_marginTop="7dp"
+            android:background="@drawable/bg_soft_input"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bài viết: "
+                android:textColor="@color/primary_dark"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSelectedPostFilter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Tất cả bài viết"
+                android:textColor="@color/text_primary"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tvClearPostFilter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="4dp"
+                android:text="✕"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▾"
+                android:textColor="@color/primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Hidden legacy ChipGroup preserved for ViewBinding compatibility -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroupFilter"
@@ -116,25 +233,78 @@
             <com.google.android.material.chip.Chip android:id="@+id/chipFilterThreads" android:layout_width="0dp" android:layout_height="0dp" />
         </com.google.android.material.chip.ChipGroup>
 
-        <!-- Controlled Auto-Reply Bot Action Button (F6) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnRunControlledAutoReply"
+        <!-- Controlled Auto-Reply Panel (F6) -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/SocialCard"
             android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:layout_marginTop="10dp"
-            android:background="@drawable/bg_pill_gradient"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minHeight="0dp"
-            android:text="Chạy Bot tự trả lời có kiểm soát"
-            android:textColor="@color/white"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            app:backgroundTint="@null"
-            app:cornerRadius="19dp" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tự động trả lời có kiểm soát"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11.5sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvAutoReplyModeHint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Chỉ Khen ngợi &amp; FAQ • Khóa Tiêu cực, TT cá nhân, chưa chắc"
+                            android:textColor="@color/text_muted"
+                            android:textSize="9.5sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchAutoReplyMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRunControlledAutoReply"
+                    android:layout_width="match_parent"
+                    android:layout_height="34dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_pill_gradient"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="0dp"
+                    android:text="Chạy Bot trả lời có kiểm soát"
+                    android:textColor="@color/white"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="@null"
+                    app:cornerRadius="17dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <!-- Comments List inside single soft SocialCard -->
+    <!-- Comments List inside SwipeRefreshLayout -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
@@ -145,21 +315,108 @@
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:paddingHorizontal="18dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="20dp">
+            android:paddingTop="4dp"
+            android:paddingBottom="24dp">
 
-            <com.google.android.material.card.MaterialCardView
-                style="@style/SocialCard"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvComments"
+                <!-- Filter summary row -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false"
-                    tools:listitem="@layout/item_comment_card" />
-            </com.google.android.material.card.MaterialCardView>
+                    android:layout_marginBottom="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvFilterSummary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="@color/text_muted"
+                        android:textSize="10.5sp"
+                        tools:text="Hiển thị 8 bình luận • 3 cảnh báo an toàn" />
+
+                    <TextView
+                        android:id="@+id/tvResetFilters"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingHorizontal="4dp"
+                        android:text="Đặt lại lọc"
+                        android:textColor="@color/primary"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/SocialCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rvComments"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:nestedScrollingEnabled="false"
+                            tools:listitem="@layout/item_comment_card" />
+
+                        <!-- Empty State when filters match 0 comments -->
+                        <LinearLayout
+                            android:id="@+id/layoutEmptyComments"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="20dp"
+                            android:paddingVertical="28dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Không có bình luận phù hợp"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:gravity="center"
+                                android:text="Thử thay đổi bộ lọc Kênh / Bài viết / Trạng thái hoặc kéo xuống để đồng bộ mới."
+                                android:textColor="@color/text_muted"
+                                android:textSize="11sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnEmptyResetFilters"
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:layout_marginTop="10dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:minHeight="0dp"
+                                android:text="Xem tất cả bình luận"
+                                android:textColor="@color/primary_dark"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                app:backgroundTint="@color/bg_soft_fill"
+                                app:cornerRadius="16dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
