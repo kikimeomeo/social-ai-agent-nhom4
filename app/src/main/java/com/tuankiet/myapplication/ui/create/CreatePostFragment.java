@@ -430,44 +430,15 @@ public class CreatePostFragment extends Fragment {
             });
         });
 
-        binding.btnRegenerateImage.setOnClickListener(v -> {
-            if (currentPost == null) return;
-            currentImageStyleIndex = (currentImageStyleIndex + 1) % 10;
-            Toast.makeText(getContext(), "AI đang tìm & tạo ảnh minh họa mới...", Toast.LENGTH_SHORT).show();
-            String platformName = (currentReviewPlatform == 0) ? "Facebook" : "Threads";
-            orchestrator.regenerateImage(requireContext(), currentPost.getTopic(), platformName, currentImageStyleIndex, new AIAgentOrchestrator.ImageCallback() {
-                @Override
-                public void onSuccess(String newImageUrl) {
-                    if (binding == null) return;
-                    currentPost.setImageUrl(newImageUrl);
-                    binding.cardReviewImage.setVisibility(View.VISIBLE);
-                    binding.btnRestoreImage.setVisibility(View.GONE);
-                    try {
-                        binding.ivReviewImage.setImageURI(null);
-                        binding.ivReviewImage.setImageURI(android.net.Uri.parse(newImageUrl));
-                    } catch (Exception ignored) {}
-                    Toast.makeText(getContext(), "🖼️ Đã cập nhật ảnh minh họa mới!", Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-
         binding.btnRemoveImage.setOnClickListener(v -> {
             if (currentPost == null) return;
             currentPost.setImageUrl("");
-            binding.cardReviewImage.setVisibility(View.GONE);
-            binding.btnRestoreImage.setVisibility(View.VISIBLE);
-            binding.tvImagePromptPreview.setText("Đã gỡ ảnh (Đăng bài thuần chữ)");
+            currentPost.setUserApproved(false);
+            bindReviewImage(currentPost, null);
             Toast.makeText(getContext(), "Đã gỡ ảnh đính kèm", Toast.LENGTH_SHORT).show();
         });
 
-        binding.btnRestoreImage.setOnClickListener(v -> {
-            binding.btnRegenerateImage.performClick();
-        });
+        binding.btnRestoreImage.setOnClickListener(v -> triggerRegenerateImage());
 
         // ĐĂNG THẬT LÊN CÁC APP TRÊN MÁY (BottomSheet chuyên nghiệp, tự tách nội dung đúng kênh)
         binding.btnShareToRealApp.setOnClickListener(v -> {
@@ -700,6 +671,8 @@ public class CreatePostFragment extends Fragment {
         SocialPlatform platform = getActiveReviewPlatform();
         int nextVariant = currentPost.getImageVariantIndex() + 1;
 
+        binding.cardReviewImage.setVisibility(View.VISIBLE);
+        binding.btnRestoreImage.setVisibility(View.GONE);
         setReviewImageLoading(true);
         orchestrator.regeneratePostImage(
                 currentPost.getTopic(),
@@ -745,6 +718,18 @@ public class CreatePostFragment extends Fragment {
 
     private void bindReviewImage(Post post, String customSourceLabel) {
         if (binding == null || post == null || !isAdded()) return;
+        boolean hasImage = post.getImageUrl() != null && !post.getImageUrl().trim().isEmpty();
+        if (!hasImage) {
+            binding.cardReviewImage.setVisibility(View.GONE);
+            binding.btnRestoreImage.setVisibility(View.VISIBLE);
+            binding.tvImageSourceBadge.setText("Không đính kèm ảnh (Thuần chữ)");
+            binding.tvImagePromptPreview.setText("Đã gỡ ảnh (Bấm 'Thêm ảnh AI' nếu muốn tạo lại)");
+            setReviewImageLoading(false);
+            return;
+        }
+
+        binding.cardReviewImage.setVisibility(View.VISIBLE);
+        binding.btnRestoreImage.setVisibility(View.GONE);
         binding.tvImagePromptPreview.setText(
                 post.getImagePrompt() != null && !post.getImagePrompt().trim().isEmpty()
                         ? "Prompt ảnh: " + post.getImagePrompt().trim()
@@ -986,18 +971,6 @@ public class CreatePostFragment extends Fragment {
         previousReviewTextBeforeRewrite = null;
         binding.btnUndoRewrite.setVisibility(View.GONE);
         bindReviewImage(post, null);
-
-        if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
-            binding.cardReviewImage.setVisibility(View.VISIBLE);
-            binding.btnRestoreImage.setVisibility(View.GONE);
-            try {
-                binding.ivReviewImage.setImageURI(null);
-                binding.ivReviewImage.setImageURI(android.net.Uri.parse(post.getImageUrl()));
-            } catch (Exception ignored) {}
-        } else {
-            binding.cardReviewImage.setVisibility(View.GONE);
-            binding.btnRestoreImage.setVisibility(View.VISIBLE);
-        }
 
         if (post.isTargetFacebook()) {
             currentReviewPlatform = 0;

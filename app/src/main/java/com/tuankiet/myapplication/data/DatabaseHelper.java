@@ -18,7 +18,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "social_ai.db";
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
 
     private static DatabaseHelper instance;
 
@@ -186,6 +186,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             addColumnIfMissing(db, "posts", "target_threads", "INTEGER DEFAULT 0");
             addColumnIfMissing(db, "posts", "published_fb", "INTEGER DEFAULT 0");
             addColumnIfMissing(db, "posts", "published_threads", "INTEGER DEFAULT 0");
+        }
+        if (oldVersion < 5) {
+            // Migrate legacy LinkedIn-only posts/logs to Threads scope on existing installs
+            db.execSQL("UPDATE posts SET content_threads = content_li " +
+                    "WHERE (content_threads IS NULL OR TRIM(content_threads) = '') " +
+                    "AND content_li IS NOT NULL AND TRIM(content_li) != ''");
+            db.execSQL("UPDATE posts SET target_threads = 1, target_li = 0 " +
+                    "WHERE target_li = 1 AND target_threads = 0");
+            db.execSQL("UPDATE agent_logs SET step_name = 'Threads Sub-agent', agent_role = 'Threads Concise Writer' " +
+                    "WHERE step_name = 'LinkedIn Sub-agent'");
         }
     }
 
