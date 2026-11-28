@@ -96,16 +96,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "platform TEXT, " +
                 "post_title TEXT, " +
+                "post_content TEXT, " +
                 "author_name TEXT, " +
                 "author_initial TEXT, " +
                 "content TEXT, " +
                 "time_ago TEXT, " +
+                "external_comment_id TEXT, " +
                 "category TEXT, " +
                 "is_answered INTEGER, " +
                 "reply_text TEXT, " +
                 "ai_suggested_reply TEXT, " +
                 "is_negative_flagged INTEGER, " +
-                "risk_warning TEXT)");
+                "risk_warning TEXT, " +
+                "is_faq INTEGER DEFAULT 0, " +
+                "has_personal_info INTEGER DEFAULT 0, " +
+                "ai_confidence REAL DEFAULT 1.0, " +
+                "auto_replied INTEGER DEFAULT 0, " +
+                "auto_reply_blocked_reason TEXT)");
 
         // Table Accounts
         db.execSQL("CREATE TABLE accounts (" +
@@ -148,8 +155,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             createAnalyticsHistoryTable(db);
             addColumnIfMissing(db, "posts", "content_threads", "TEXT");
             addColumnIfMissing(db, "posts", "target_threads", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "post_content", "TEXT");
+            addColumnIfMissing(db, "comments", "external_comment_id", "TEXT");
+            addColumnIfMissing(db, "comments", "is_faq", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "has_personal_info", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "ai_confidence", "REAL DEFAULT 1.0");
+            addColumnIfMissing(db, "comments", "auto_replied", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "auto_reply_blocked_reason", "TEXT");
+            // Migrate legacy seeded LinkedIn comments to Threads so Inbox reflects Facebook & Threads scope
+            db.execSQL("UPDATE comments SET platform = 'THREADS' WHERE platform = 'LINKEDIN'");
         }
         if (oldVersion < 4) {
+            // Ensure comments columns exist even if upgrading from v3 created by another branch
+            addColumnIfMissing(db, "comments", "post_content", "TEXT");
+            addColumnIfMissing(db, "comments", "external_comment_id", "TEXT");
+            addColumnIfMissing(db, "comments", "is_faq", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "has_personal_info", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "ai_confidence", "REAL DEFAULT 1.0");
+            addColumnIfMissing(db, "comments", "auto_replied", "INTEGER DEFAULT 0");
+            addColumnIfMissing(db, "comments", "auto_reply_blocked_reason", "TEXT");
+            db.execSQL("UPDATE comments SET platform = 'THREADS' WHERE platform = 'LINKEDIN'");
+
             // Add new columns to posts table for F5 Offline Queue & Idempotency
             addColumnIfMissing(db, "posts", "idempotency_key", "TEXT");
             addColumnIfMissing(db, "posts", "fb_post_url", "TEXT");
@@ -214,12 +240,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("topic", post.getTopic());
         cv.put("tone", post.getTone());
         cv.put("content_fb", post.getContentFacebook());
-        cv.put("content_threads", post.getContentThreads());
         cv.put("content_li", post.getContentLinkedIn());
         cv.put("content_threads", post.getContentThreads());
         cv.put("status", post.getStatus());
         cv.put("target_fb", post.isTargetFacebook() ? 1 : 0);
-        cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
         cv.put("target_li", post.isTargetLinkedIn() ? 1 : 0);
         cv.put("target_threads", post.isTargetThreads() ? 1 : 0);
         cv.put("created_at", post.getCreatedAt());
@@ -364,7 +388,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put("topic", post.getTopic());
         cv.put("tone", post.getTone());
         cv.put("content_fb", post.getContentFacebook());
-        cv.put("content_threads", post.getContentThreads());
         cv.put("content_li", post.getContentLinkedIn());
         cv.put("content_threads", post.getContentThreads());
         cv.put("status", post.getStatus());
@@ -391,55 +414,159 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public long insertComment(CommentItem item) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put("platform", item.getPlatform().name());
+        cv.put("platform", item.getPlatform() != null ? item.getPlatform().name() : SocialPlatform.FACEBOOK.name());
         cv.put("post_title", item.getPostTitle());
+        cv.put("post_content", item.getPostContent());
         cv.put("author_name", item.getAuthorName());
         cv.put("author_initial", item.getAuthorInitial());
         cv.put("content", item.getContent());
         cv.put("time_ago", item.getTimeAgo());
+        cv.put("external_comment_id", item.getExternalCommentId());
         cv.put("category", item.getCategory());
         cv.put("is_answered", item.isAnswered() ? 1 : 0);
         cv.put("reply_text", item.getReplyText());
         cv.put("ai_suggested_reply", item.getAiSuggestedReply());
         cv.put("is_negative_flagged", item.isNegativeFlagged() ? 1 : 0);
         cv.put("risk_warning", item.getRiskWarning());
-        return db.insert("comments", null, cv);
+        cv.put("is_faq", item.isFaq() ? 1 : 0);
+        cv.put("has_personal_info", item.hasPersonalInfo() ? 1 : 0);
+        cv.put("ai_confidence", item.getAiConfidence());
+        cv.put("auto_replied", item.isAutoReplied() ? 1 : 0);
+        cv.put("auto_reply_blocked_reason", item.getAutoReplyBlockedReason());
+        long rowId = db.insert("comments", null, cv);
+        if (rowId > 0) {
+            item.setId(rowId);
+        }
+        return rowId;
     }
 
     public List<CommentItem> getAllComments() {
         List<CommentItem> list = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM comments ORDER BY id DESC", null);
-        if (cursor != null && cursor.moveToFirst()) {
-            do {
-                CommentItem item = new CommentItem();
-                item.setId(cursor.getLong(cursor.getColumnIndexOrThrow("id")));
-                String platStr = cursor.getString(cursor.getColumnIndexOrThrow("platform"));
-                item.setPlatform(SocialPlatform.valueOf(platStr));
-                item.setPostTitle(cursor.getString(cursor.getColumnIndexOrThrow("post_title")));
-                item.setAuthorName(cursor.getString(cursor.getColumnIndexOrThrow("author_name")));
-                item.setAuthorInitial(cursor.getString(cursor.getColumnIndexOrThrow("author_initial")));
-                item.setContent(cursor.getString(cursor.getColumnIndexOrThrow("content")));
-                item.setTimeAgo(cursor.getString(cursor.getColumnIndexOrThrow("time_ago")));
-                item.setCategory(cursor.getString(cursor.getColumnIndexOrThrow("category")));
-                item.setAnswered(cursor.getInt(cursor.getColumnIndexOrThrow("is_answered")) == 1);
-                item.setReplyText(cursor.getString(cursor.getColumnIndexOrThrow("reply_text")));
-                item.setAiSuggestedReply(cursor.getString(cursor.getColumnIndexOrThrow("ai_suggested_reply")));
-                item.setNegativeFlagged(cursor.getInt(cursor.getColumnIndexOrThrow("is_negative_flagged")) == 1);
-                item.setRiskWarning(cursor.getString(cursor.getColumnIndexOrThrow("risk_warning")));
-                list.add(item);
-            } while (cursor.moveToNext());
-            cursor.close();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM comments ORDER BY id DESC", null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    list.add(readCommentFromCursor(cursor));
+                } while (cursor.moveToNext());
+            }
         }
         return list;
     }
 
+    public CommentItem getCommentById(long commentId) {
+        SQLiteDatabase db = getReadableDatabase();
+        try (Cursor cursor = db.rawQuery("SELECT * FROM comments WHERE id = ? LIMIT 1",
+                new String[]{String.valueOf(commentId)})) {
+            if (cursor != null && cursor.moveToFirst()) {
+                return readCommentFromCursor(cursor);
+            }
+        }
+        return null;
+    }
+
+    public boolean commentExistsByExternalId(String externalCommentId) {
+        if (externalCommentId == null || externalCommentId.trim().isEmpty()) {
+            return false;
+        }
+        SQLiteDatabase db = getReadableDatabase();
+        String cleanId = externalCommentId.trim();
+        try (Cursor cursor = db.rawQuery(
+                "SELECT 1 FROM comments WHERE external_comment_id = ? OR time_ago LIKE ? LIMIT 1",
+                new String[]{cleanId, "%ID:" + cleanId + "%"})) {
+            return cursor != null && cursor.moveToFirst();
+        }
+    }
+
+    public String findPostContentByTitle(String postTitle) {
+        if (postTitle == null || postTitle.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = postTitle.trim()
+                .replaceFirst("^\\[Threads\\]\\s*", "")
+                .replaceFirst("^\\[Facebook\\]\\s*", "");
+        SQLiteDatabase db = getReadableDatabase();
+        try (Cursor cursor = db.rawQuery(
+                "SELECT content_fb, content_li FROM posts WHERE topic = ? LIMIT 1",
+                new String[]{normalized})) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String fb = cursor.getString(0);
+                if (fb != null && !fb.trim().isEmpty()) return fb;
+                String li = cursor.getString(1);
+                if (li != null && !li.trim().isEmpty()) return li;
+            }
+        }
+        return null;
+    }
+
+    private CommentItem readCommentFromCursor(Cursor cursor) {
+        CommentItem item = new CommentItem();
+        item.setId(cursor.getLong(cursor.getColumnIndexOrThrow("id")));
+        String platStr = cursor.getString(cursor.getColumnIndexOrThrow("platform"));
+        try {
+            item.setPlatform(SocialPlatform.valueOf(platStr));
+        } catch (Exception e) {
+            item.setPlatform(SocialPlatform.FACEBOOK);
+        }
+        item.setPostTitle(cursor.getString(cursor.getColumnIndexOrThrow("post_title")));
+        int postContentIdx = cursor.getColumnIndex("post_content");
+        if (postContentIdx >= 0) item.setPostContent(cursor.getString(postContentIdx));
+        item.setAuthorName(cursor.getString(cursor.getColumnIndexOrThrow("author_name")));
+        item.setAuthorInitial(cursor.getString(cursor.getColumnIndexOrThrow("author_initial")));
+        item.setContent(cursor.getString(cursor.getColumnIndexOrThrow("content")));
+        item.setTimeAgo(cursor.getString(cursor.getColumnIndexOrThrow("time_ago")));
+        int extIdIdx = cursor.getColumnIndex("external_comment_id");
+        if (extIdIdx >= 0) item.setExternalCommentId(cursor.getString(extIdIdx));
+        item.setCategory(cursor.getString(cursor.getColumnIndexOrThrow("category")));
+        item.setAnswered(cursor.getInt(cursor.getColumnIndexOrThrow("is_answered")) == 1);
+        item.setReplyText(cursor.getString(cursor.getColumnIndexOrThrow("reply_text")));
+        item.setAiSuggestedReply(cursor.getString(cursor.getColumnIndexOrThrow("ai_suggested_reply")));
+        item.setNegativeFlagged(cursor.getInt(cursor.getColumnIndexOrThrow("is_negative_flagged")) == 1);
+        item.setRiskWarning(cursor.getString(cursor.getColumnIndexOrThrow("risk_warning")));
+
+        int faqIdx = cursor.getColumnIndex("is_faq");
+        if (faqIdx >= 0) item.setFaq(cursor.getInt(faqIdx) == 1);
+        int piiIdx = cursor.getColumnIndex("has_personal_info");
+        if (piiIdx >= 0) item.setHasPersonalInfo(cursor.getInt(piiIdx) == 1);
+        int confIdx = cursor.getColumnIndex("ai_confidence");
+        if (confIdx >= 0 && !cursor.isNull(confIdx)) {
+            item.setAiConfidence(cursor.getDouble(confIdx));
+        } else {
+            item.setAiConfidence(0.90);
+        }
+        int autoIdx = cursor.getColumnIndex("auto_replied");
+        if (autoIdx >= 0) item.setAutoReplied(cursor.getInt(autoIdx) == 1);
+        int blockedIdx = cursor.getColumnIndex("auto_reply_blocked_reason");
+        if (blockedIdx >= 0) item.setAutoReplyBlockedReason(cursor.getString(blockedIdx));
+
+        return item;
+    }
+
     public void updateCommentReply(long commentId, String replyText) {
+        updateCommentReply(commentId, replyText, false);
+    }
+
+    public void updateCommentReply(long commentId, String replyText, boolean autoReplied) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put("is_answered", 1);
         cv.put("reply_text", replyText);
+        cv.put("auto_replied", autoReplied ? 1 : 0);
         db.update("comments", cv, "id = ?", new String[]{String.valueOf(commentId)});
+    }
+
+    public void updateCommentAnalysis(CommentItem item) {
+        if (item == null || item.getId() <= 0) return;
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("category", item.getCategory());
+        cv.put("ai_suggested_reply", item.getAiSuggestedReply());
+        cv.put("is_negative_flagged", item.isNegativeFlagged() ? 1 : 0);
+        cv.put("risk_warning", item.getRiskWarning());
+        cv.put("is_faq", item.isFaq() ? 1 : 0);
+        cv.put("has_personal_info", item.hasPersonalInfo() ? 1 : 0);
+        cv.put("ai_confidence", item.getAiConfidence());
+        cv.put("auto_reply_blocked_reason", item.getAutoReplyBlockedReason());
+        db.update("comments", cv, "id = ?", new String[]{String.valueOf(item.getId())});
     }
 
     // --- Accounts Operations ---

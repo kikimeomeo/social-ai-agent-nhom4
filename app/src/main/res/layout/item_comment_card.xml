@@ -11,9 +11,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="14dp"
-        android:paddingVertical="12dp">
+        android:paddingVertical="11dp">
 
-        <!-- Row 1: Author + Platform Icon + Category Badge -->
+        <!-- Row 1: Platform Icon + Author + Time + 5-Category AI Badge -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -22,19 +22,19 @@
 
             <ImageView
                 android:id="@+id/ivCommentPlatform"
-                android:layout_width="13dp"
-                android:layout_height="13dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:src="@drawable/ic_facebook" />
 
             <TextView
                 android:id="@+id/tvAuthorName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="5dp"
+                android:layout_marginStart="6dp"
                 android:textColor="@color/text_primary"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                tools:text="Minh Anh" />
+                tools:text="Trần Minh Khoa" />
 
             <TextView
                 android:id="@+id/tvCommentTime"
@@ -46,7 +46,7 @@
                 android:maxLines="1"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
-                tools:text="• 5 phút trước" />
+                tools:text="• 15 phút trước" />
 
             <TextView
                 android:id="@+id/tvCategoryBadge"
@@ -54,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_soft_pill"
                 android:backgroundTint="@color/status_green_bg"
-                android:paddingHorizontal="7dp"
+                android:paddingHorizontal="8dp"
                 android:paddingVertical="2dp"
                 android:text="Khen ngợi"
                 android:textColor="@color/status_green"
@@ -62,24 +62,36 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Row 2: Comment Content -->
+        <!-- Row 2: Post Context Subtitle (Visible for Post Filter clarity) -->
+        <TextView
+            android:id="@+id/tvPostContextTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp"
+            tools:text="Bài: 5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026" />
+
+        <!-- Row 3: Comment Content -->
         <TextView
             android:id="@+id/tvCommentContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:lineSpacingExtra="2dp"
-            android:maxLines="2"
+            android:layout_marginTop="4dp"
             android:ellipsize="end"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="3"
             android:textColor="@color/text_primary"
-            android:textSize="11sp"
+            android:textSize="11.5sp"
             tools:text="App có hỗ trợ tự nhập Gemini API Key cá nhân không bạn?" />
 
-        <!-- Row 3: Status + Tap hint -->
+        <!-- Row 4: Status + AI Confidence + Tap hint -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -88,24 +100,62 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Chưa trả lời"
-                android:textColor="@color/primary"
+                android:textColor="@color/status_amber"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvConfidenceMeta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" • Chạm để trả lời"
+                android:layout_marginStart="6dp"
                 android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                tools:text="• AI 93%" />
+
+            <TextView
+                android:id="@+id/tvTapHint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="end"
+                android:maxLines="1"
+                android:text="Chạm để duyệt &amp; trả lời"
+                android:textColor="@color/primary"
                 android:textSize="10sp" />
         </LinearLayout>
 
-        <!-- Hidden legacy bound views preserved for CommentAdapter -->
-        <TextView android:id="@+id/tvPostContextTitle" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
-        <TextView android:id="@+id/tvAuthorAvatar" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
-        <LinearLayout android:id="@+id/layoutAlertWarning" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
-            <TextView android:id="@+id/tvAlertWarningText" android:layout_width="0dp" android:layout_height="0dp" />
+        <!-- Row 5: Safety Alert Banner (Negative / Spam / PII / Low AI Confidence) -->
+        <LinearLayout
+            android:id="@+id/layoutAlertWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_soft_input"
+            android:backgroundTint="@color/status_red_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="5dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvAlertWarningText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/status_red"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                tools:text="Cảnh báo AI: Bình luận tiêu cực • Khóa tự động trả lời" />
         </LinearLayout>
+
+        <!-- Hidden legacy bound view preserved for compatibility -->
+        <TextView
+            android:id="@+id/tvAuthorAvatar"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <View
@@ -113,4 +163,3 @@
         android:layout_height="1dp"
         android:background="@color/divider" />
 </LinearLayout>
-

@@ -2,6 +2,7 @@ package com.tuankiet.myapplication.repository;
 
 import android.content.Context;
 
+import com.tuankiet.myapplication.agent.CommentSafetyPolicy;
 import com.tuankiet.myapplication.data.DatabaseHelper;
 import com.tuankiet.myapplication.model.AgentLog;
 import com.tuankiet.myapplication.model.AnalyticsData;
@@ -139,91 +140,113 @@ public class MockDataRepository {
         );
         dbHelper.insertPost(post3);
 
-        // 3. Seed Comments with AI Sentiment Classification & Safety Flag
-        CommentItem c1 = new CommentItem(
-                0,
+        // 3. Seed Comments across Facebook & Threads covering all 5 AI categories + F6 safety cases
+        String post1Content = post1.getContentFacebook();
+        String post2Content = post2.getContentFacebook();
+
+        CommentItem c1 = createAnalyzedSeedComment(
                 SocialPlatform.FACEBOOK,
-                "5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026",
+                post1.getTopic(),
+                post1Content,
                 "Trần Minh Khoa",
                 "K",
                 "Bài viết rất sâu sắc và thực tế anh ơi! Mong anh ra thêm series phân tích kiến trúc On-Device AI trên Android ạ.",
                 "15 phút trước",
-                CommentItem.CATEGORY_PRAISE,
-                false,
-                null,
-                "Dạ cảm ơn Khoa nhiều nhé! Mình đang hoàn thiện phần demo bằng Java Native và sẽ lên sóng bài phân tích chi tiết vào tuần tới nhé.",
                 false,
                 null
         );
         dbHelper.insertComment(c1);
 
-        CommentItem c2 = new CommentItem(
-                0,
-                SocialPlatform.LINKEDIN,
-                "5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026",
-                "Lê Thị Hương",
+        CommentItem c2 = createAnalyzedSeedComment(
+                SocialPlatform.THREADS,
+                post1.getTopic(),
+                post1Content,
+                "@lehuong.dev",
                 "H",
-                "Cho em hỏi với app Android thuần Java thì tích hợp Gemini REST API có bị delay quá không ạ? Em thấy streaming khá mượt.",
-                "1 giờ trước",
-                CommentItem.CATEGORY_QUESTION,
-                false,
-                null,
-                "Chào Hương, khi dùng HTTP Streaming với OkHttp và cập nhật TextView qua Handler, độ trễ gần như bằng 0 và mang lại trải nghiệm rất trực quan bạn nhé!",
+                "Cho em hỏi app có hỗ trợ tự nhập Gemini API Key cá nhân (BYOK) và chế độ miễn phí không ạ?",
+                "42 phút trước",
                 false,
                 null
         );
         dbHelper.insertComment(c2);
 
-        CommentItem c3 = new CommentItem(
-                0,
+        CommentItem c3 = createAnalyzedSeedComment(
                 SocialPlatform.FACEBOOK,
-                "Tại sao Mobile Developer phải học On-Device AI?",
-                "Người dùng ẩn danh",
-                "A",
-                "Nội dung này sao giống copy từ bài blog tuần trước vậy? Đề nghị admin giải thích rõ nguồn số liệu, đừng có nói suông!",
-                "3 giờ trước",
-                CommentItem.CATEGORY_NEGATIVE,
+                post2.getTopic(),
+                post2Content,
+                "Phạm Quốc Khánh",
+                "K",
+                "Bài viết chất lượng lắm, góp ý thêm là bạn nên bổ sung bảng so sánh độ trễ giữa Gemini Flash và SLM chạy local để dễ chọn hơn nhé!",
+                "1 giờ trước",
                 false,
-                null,
-                null, // Disabled auto-reply for negative comment
-                true,
-                "CẢNH BÁO AN TOÀN: Bình luận có sắc thái tiêu cực hoặc khiếu nại bản quyền. Hệ thống đã khóa tính năng tự động trả lời để tránh rủi ro truyền thông. Bạn vui lòng tự nhập phản hồi thủ công."
+                null
         );
         dbHelper.insertComment(c3);
 
-        CommentItem c4 = new CommentItem(
-                0,
-                SocialPlatform.LINKEDIN,
-                "Tại sao Mobile Developer phải học On-Device AI?",
-                "Đặng Quốc Bảo",
-                "B",
-                "Rất đồng tình với quan điểm của tác giả về việc giảm chi phí serverless inference. Đã repost cho đồng nghiệp cùng đọc!",
-                "5 giờ trước",
-                CommentItem.CATEGORY_PRAISE,
-                true,
-                "Cảm ơn anh Bảo đã ủng hộ và chia sẻ bài viết!",
-                "Cảm ơn anh Bảo đã ủng hộ và chia sẻ bài viết!",
+        CommentItem c4 = createAnalyzedSeedComment(
+                SocialPlatform.THREADS,
+                post2.getTopic(),
+                post2Content,
+                "@anon_reviewer",
+                "A",
+                "Nội dung này sao giống copy từ bài blog tuần trước vậy? Đề nghị admin giải thích rõ nguồn số liệu, đừng có nói suông!",
+                "3 giờ trước",
                 false,
                 null
         );
         dbHelper.insertComment(c4);
 
-        CommentItem c5 = new CommentItem(
-                0,
+        CommentItem c5 = createAnalyzedSeedComment(
+                SocialPlatform.THREADS,
+                post1.getTopic(),
+                post1Content,
+                "@minhnguyen.biz",
+                "M",
+                "Mình muốn đăng ký tư vấn triển khai cho team, gọi mình qua số 0912345678 hoặc gửi qua email minh.nguyen@gmail.com nhé!",
+                "4 giờ trước",
+                false,
+                null
+        );
+        dbHelper.insertComment(c5);
+
+        CommentItem c6 = createAnalyzedSeedComment(
                 SocialPlatform.FACEBOOK,
-                "5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026",
+                post2.getTopic(),
+                post2Content,
+                "Nguyễn Hữu Tín",
+                "T",
+                "Hợp đồng SLA triển khai on-premise cho ngân hàng bên mình có cam kết mức bồi thường pháp lý cụ thể không?",
+                "5 giờ trước",
+                false,
+                null
+        );
+        dbHelper.insertComment(c6);
+
+        CommentItem c7 = createAnalyzedSeedComment(
+                SocialPlatform.THREADS,
+                post2.getTopic(),
+                post2Content,
+                "@baodang.tech",
+                "B",
+                "Rất đồng tình với quan điểm của tác giả về việc giảm chi phí inference. Đã repost cho đồng nghiệp cùng đọc!",
+                "6 giờ trước",
+                true,
+                "Cảm ơn @baodang.tech đã ủng hộ và chia sẻ bài viết về On-Device AI nhé!"
+        );
+        dbHelper.insertComment(c7);
+
+        CommentItem c8 = createAnalyzedSeedComment(
+                SocialPlatform.FACEBOOK,
+                post1.getTopic(),
+                post1Content,
                 "Spam Bot 24/7",
                 "S",
                 "Bấm vào link này để nhận ngay khóa học làm giàu cấp tốc không cần học tập: bit.ly/spam-link",
                 "1 ngày trước",
-                CommentItem.CATEGORY_SPAM,
                 false,
-                null,
-                null,
-                true,
-                "CẢNH BÁO: Phát hiện liên kết spam độc hại. Đề xuất ẩn hoặc xóa bình luận này."
+                null
         );
-        dbHelper.insertComment(c5);
+        dbHelper.insertComment(c8);
 
         // 4. Seed Initial Agent Logs
         AgentLog log1 = new AgentLog(
@@ -283,12 +306,55 @@ public class MockDataRepository {
         }
     }
 
+    private CommentItem createAnalyzedSeedComment(SocialPlatform platform,
+                                                  String postTitle,
+                                                  String postContent,
+                                                  String authorName,
+                                                  String authorInitial,
+                                                  String content,
+                                                  String timeAgo,
+                                                  boolean answered,
+                                                  String replyText) {
+        CommentItem item = new CommentItem();
+        item.setPlatform(platform);
+        item.setPostTitle(postTitle);
+        item.setPostContent(postContent);
+        item.setAuthorName(authorName);
+        item.setAuthorInitial(authorInitial);
+        item.setContent(content);
+        item.setTimeAgo(timeAgo);
+        item.setAnswered(answered);
+        item.setReplyText(replyText);
+
+        CommentSafetyPolicy.CommentAnalysis analysis = CommentSafetyPolicy.analyzeCommentLocally(
+                platform, postTitle, postContent, authorName, content
+        );
+        CommentSafetyPolicy.applyAnalysisToComment(item, analysis);
+        return item;
+    }
+
     public List<CommentItem> getComments() {
         return dbHelper.getAllComments();
     }
 
+    public CommentItem getCommentById(long commentId) {
+        return dbHelper.getCommentById(commentId);
+    }
+
     public void replyToComment(long commentId, String reply) {
-        dbHelper.updateCommentReply(commentId, reply);
+        dbHelper.updateCommentReply(commentId, reply, false);
+    }
+
+    public void replyToComment(long commentId, String reply, boolean autoReplied) {
+        dbHelper.updateCommentReply(commentId, reply, autoReplied);
+    }
+
+    public void updateCommentAnalysis(CommentItem item) {
+        dbHelper.updateCommentAnalysis(item);
+    }
+
+    public String findPostContentByTitle(String postTitle) {
+        return dbHelper.findPostContentByTitle(postTitle);
     }
 
     public List<SocialAccount> getAccounts() {

@@ -20,14 +20,14 @@ public class NotificationHelper {
 
     private static final String CHANNEL_ID = "social_ai_channel";
     private static final String CHANNEL_NAME = "SocialAI Notifications";
+    public static final String EXTRA_COMMENT_ID = "target_comment_id";
 
     public static void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH
-            );
+                    NotificationManager.IMPORTANCE_HIGH);
             channel.setDescription("Thông báo bình luận mới và tiến trình xuất bản SocialAI");
             channel.enableVibration(true);
 
@@ -39,15 +39,24 @@ public class NotificationHelper {
     }
 
     public static void showNotification(Context context, String title, String message) {
+        showNotification(context, title, message, -1L);
+    }
+
+    public static void showNotification(Context context, String title, String message, long commentId) {
         createNotificationChannel(context);
 
         Intent intent = new Intent(context, MainActivity.class);
         intent.putExtra("target_tab", R.id.nav_inbox);
+        if (commentId > 0) {
+            intent.putExtra(EXTRA_COMMENT_ID, commentId);
+        }
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int requestCode = commentId > 0 ? (int) (commentId & 0x7fffffff)
+                : (int) (System.currentTimeMillis() & 0x7fffffff);
         PendingIntent pendingIntent = PendingIntent.getActivity(
-                context, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
-        );
+                context, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+                        | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_sparkles)
@@ -59,17 +68,18 @@ public class NotificationHelper {
                 .setAutoCancel(true);
 
         try {
-            NotificationManagerCompat.from(context).notify((int) System.currentTimeMillis(), builder.build());
+            NotificationManagerCompat.from(context).notify((int) (System.currentTimeMillis() & 0x7fffffff),
+                    builder.build());
         } catch (SecurityException ignored) {
             // Android 13+ permission may be pending
         }
     }
 
     public static void showCommentNotification(Context context, CommentItem item) {
-        String channelName = item.getPlatform().getDisplayName();
+        String channelName = item.getPlatform() != null ? item.getPlatform().getDisplayName() : "SocialAI";
         String title = "Bình luận mới từ " + item.getAuthorName() + " (" + channelName + ")";
-        String msg = item.getContent();
-        showNotification(context, title, msg);
+        String msg = "[" + CommentItem.getCategoryDisplayName(item.getCategory()) + "] " + item.getContent();
+        showNotification(context, title, msg, item.getId());
     }
 
     public static void showPostPublishedNotification(Context context, String title, String message, String postUrl) {
@@ -108,4 +118,3 @@ public class NotificationHelper {
         }
     }
 }
-

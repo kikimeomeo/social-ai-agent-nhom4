@@ -14,16 +14,20 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tuankiet.myapplication.agent.AIAgentOrchestrator;
+import com.tuankiet.myapplication.agent.CommentSafetyPolicy;
 import com.tuankiet.myapplication.data.DatabaseHelper;
 import com.tuankiet.myapplication.data.SecurePreferenceManager;
 import com.tuankiet.myapplication.model.CommentItem;
 import com.tuankiet.myapplication.model.SocialPlatform;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -48,11 +52,25 @@ public class RealSocialPublisher {
         void onCommentsUpdated();
     }
 
+    public static class SyncResult {
+        public final int newCommentsCount;
+        public final int autoRepliedCount;
+        public final int blockedCount;
+        public final String statusMessage;
+
+        public SyncResult(int newCommentsCount, int autoRepliedCount, int blockedCount, String statusMessage) {
+            this.newCommentsCount = newCommentsCount;
+            this.autoRepliedCount = autoRepliedCount;
+            this.blockedCount = blockedCount;
+            this.statusMessage = statusMessage;
+        }
+    }
+
     private static final OkHttpClient client = new OkHttpClient();
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static final Set<String> botPublishedReplyIds = Collections.synchronizedSet(new HashSet<>());
     private static boolean isAutoScannerRunning = false;
-    private static boolean isScanningInProgress = false;
+    private static final AtomicBoolean isScanningInProgress = new AtomicBoolean(false);
     private static boolean hasShownPermissionHint = false;
     private static OnCommentsUpdatedListener commentsUpdatedListener;
 
@@ -60,8 +78,16 @@ public class RealSocialPublisher {
         commentsUpdatedListener = listener;
     }
 
+    public static void notifyCommentsUpdated() {
+        mainHandler.post(() -> {
+            if (commentsUpdatedListener != null) {
+                commentsUpdatedListener.onCommentsUpdated();
+            }
+        });
+    }
+
     /**
-     * BỘ QUÉT BÌNH LUẬN THREADS TỰ ĐỘNG MỖI 12 GIÂY & AI AGENT TỰ ĐỘNG TRẢ LỜI (F6)
+     * BỘ QUÉT BÌNH LUẬN TỰ ĐỘNG KHI APP ĐANG MỞ (KẾT HỢP CÙNG CommentSyncWorker ĐỊNH KỲ)
      */
     public static void startAutoCommentScanner(Context context) {
         if (isAutoScannerRunning || context == null) return;
@@ -71,19 +97,26 @@ public class RealSocialPublisher {
         Runnable scannerRunnable = new Runnable() {
             @Override
             public void run() {
-                String token = SecurePreferenceManager.getInstance(appContext).getThreadsToken();
-                if (token != null && !token.trim().isEmpty() && !isScanningInProgress) {
-                    fetchRealThreadsComments(appContext, token, (count, msg) -> {
-                        if (count > 0 && commentsUpdatedListener != null) {
-                            commentsUpdatedListener.onCommentsUpdated();
+                SecurePreferenceManager prefs = SecurePreferenceManager.getInstance(appContext);
+                String threadsToken = prefs.getThreadsToken();
+                String fbPageId = prefs.getFacebookPageId();
+                String fbToken = prefs.getFacebookPageToken();
+                boolean hasAnyRealToken = (threadsToken != null && !threadsToken.trim().isEmpty())
+                        || (!fbPageId.isEmpty() && fbToken != null && !fbToken.trim().isEmpty());
+
+                if (hasAnyRealToken && !isScanningInProgress.get() && NetworkUtils.isNetworkAvailable(appContext)) {
+                    new Thread(() -> {
+                        SyncResult result = syncAllRealCommentsSync(appContext, prefs.isControlledAutoReplyEnabled());
+                        if (result.newCommentsCount > 0) {
+                            notifyCommentsUpdated();
                         }
-                    });
+                    }).start();
                 }
-                mainHandler.postDelayed(this, 12000); // Quét định kỳ mỗi 12 giây
+                mainHandler.postDelayed(this, 30000); // Quét nhẹ mỗi 30 giây khi app foreground
             }
         };
 
-        mainHandler.postDelayed(scannerRunnable, 4000);
+        mainHandler.postDelayed(scannerRunnable, 5000);
     }
 
     /**
@@ -373,214 +406,458 @@ public class RealSocialPublisher {
     }
 
     /**
-     * QUÉT COMMENT THẬT TỪ THREADS API & AI AGENT TỰ ĐỘNG PHẢN HỒI CÓ KIỂM SOÁT (F6)
-     * 1. GET https://graph.threads.net/v1.0/me/threads?fields=id,text&limit=5
-     * 2. GET https://graph.threads.net/v1.0/{post_id}/replies?fields=id,text,username,timestamp
-     * 3. Nếu phát hiện comment mới:
-     *    - Nếu An Toàn (Khen ngợi / Câu hỏi): Gọi Gemini AI Agent sinh câu trả lời và tự động bắn reply lên Threads!
-     *    - Nếu Tiêu Cực (Rủi ro): Chặn tự động trả lời, báo động đỏ về Hộp thư để duyệt thủ công!
+     * ĐỒNG BỘ ĐỒNG THỜI BÌNH LUẬN THẬT TỪ THREADS API & FACEBOOK PAGE GRAPH API (SYNCHRONOUS)
+     * Dùng chung cho CommentSyncWorker (WorkManager nền) và Pull-to-refresh.
+     * - Phân loại AI 5 nhóm: Câu hỏi, Khen ngợi, Góp ý, Tiêu cực, Spam.
+     * - Tự soạn gợi ý theo ngữ cảnh bài đăng.
+     * - Chỉ tự động trả lời có kiểm soát khi bật chế độ VÀ đạt CommentSafetyPolicy (Khen ngợi / FAQ, không PII, AI chắc chắn).
+     */
+    public static SyncResult syncAllRealCommentsSync(Context context, boolean allowAutoReply) {
+        if (context == null) {
+            return new SyncResult(0, 0, 0, "Thiếu ngữ cảnh ứng dụng.");
+        }
+        if (!isScanningInProgress.compareAndSet(false, true)) {
+            return new SyncResult(0, 0, 0, "Đang đồng bộ bình luận, vui lòng chờ giây lát...");
+        }
+
+        Context appContext = context.getApplicationContext();
+        SecurePreferenceManager prefs = SecurePreferenceManager.getInstance(appContext);
+        String threadsToken = prefs.getThreadsToken();
+        String fbPageId = prefs.getFacebookPageId();
+        String fbToken = prefs.getFacebookPageToken();
+
+        int totalAdded = 0;
+        int totalAutoReplied = 0;
+        int totalBlocked = 0;
+        List<String> syncedChannels = new ArrayList<>();
+        List<String> errorNotes = new ArrayList<>();
+
+        try {
+            if (threadsToken != null && !threadsToken.trim().isEmpty()) {
+                SyncResult threadsRes = syncThreadsCommentsInternal(appContext, threadsToken.trim(), allowAutoReply);
+                totalAdded += threadsRes.newCommentsCount;
+                totalAutoReplied += threadsRes.autoRepliedCount;
+                totalBlocked += threadsRes.blockedCount;
+                syncedChannels.add("Threads");
+                if (threadsRes.statusMessage != null && threadsRes.statusMessage.startsWith("⚠️")) {
+                    errorNotes.add(threadsRes.statusMessage);
+                }
+            }
+
+            if (fbPageId != null && !fbPageId.trim().isEmpty()
+                    && fbToken != null && !fbToken.trim().isEmpty()) {
+                SyncResult fbRes = syncFacebookCommentsInternal(appContext, fbPageId.trim(), fbToken.trim(), allowAutoReply);
+                totalAdded += fbRes.newCommentsCount;
+                totalAutoReplied += fbRes.autoRepliedCount;
+                totalBlocked += fbRes.blockedCount;
+                syncedChannels.add("Facebook");
+                if (fbRes.statusMessage != null && fbRes.statusMessage.startsWith("⚠️")) {
+                    errorNotes.add(fbRes.statusMessage);
+                }
+            }
+
+            prefs.setLastCommentSyncTime(System.currentTimeMillis());
+            if (totalAdded > 0) {
+                notifyCommentsUpdated();
+            }
+
+            String summary;
+            if (syncedChannels.isEmpty()) {
+                summary = "Chưa cấu hình Token Facebook Page hoặc Threads.";
+            } else if (!errorNotes.isEmpty() && totalAdded == 0) {
+                summary = errorNotes.get(0);
+            } else if (totalAdded > 0) {
+                summary = "Đã đồng bộ " + android.text.TextUtils.join(" & ", syncedChannels)
+                        + ": +" + totalAdded + " bình luận mới"
+                        + (totalAutoReplied > 0 ? " • Bot trả lời: " + totalAutoReplied : "")
+                        + (totalBlocked > 0 ? " • Chặn an toàn: " + totalBlocked : "");
+            } else {
+                summary = "Đã quét " + android.text.TextUtils.join(" & ", syncedChannels) + ": Chưa có bình luận mới.";
+            }
+            return new SyncResult(totalAdded, totalAutoReplied, totalBlocked, summary);
+        } finally {
+            isScanningInProgress.set(false);
+        }
+    }
+
+    /**
+     * Wrapper bất đồng bộ giữ tương thích ngược cho các caller cũ gọi fetchRealThreadsComments.
      */
     public static void fetchRealThreadsComments(Context context, String accessToken, FetchCommentsCallback callback) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
             if (callback != null) mainHandler.post(() -> callback.onResult(0, "Chưa cấu hình Threads Token."));
             return;
         }
-        if (isScanningInProgress) return;
-        isScanningInProgress = true;
-
         final Context appContext = context.getApplicationContext();
         final String cleanToken = accessToken.trim();
-
         new Thread(() -> {
-            try {
-                // 0. Lấy numeric userId từ /me
-                String myUserId = "me";
-                String meUrl = "https://graph.threads.net/v1.0/me?fields=id,username&access_token=" + Uri.encode(cleanToken);
-                try (Response meResp = client.newCall(new Request.Builder().url(meUrl).get().build()).execute()) {
-                    if (meResp.isSuccessful() && meResp.body() != null) {
-                        JsonObject meObj = JsonParser.parseString(meResp.body().string()).getAsJsonObject();
-                        if (meObj.has("id")) myUserId = meObj.get("id").getAsString();
-                    }
-                } catch (Exception ignored) {}
-
-                // 1. Lấy 5 bài viết mới nhất trên Threads
-                String postsUrl = "https://graph.threads.net/v1.0/me/threads?fields=id,text&limit=5&access_token=" + Uri.encode(cleanToken);
-                Request postsReq = new Request.Builder().url(postsUrl).get().build();
-                try (Response postsResp = client.newCall(postsReq).execute()) {
-                    if (!postsResp.isSuccessful() || postsResp.body() == null) {
-                        String err = postsResp.body() != null ? postsResp.body().string() : "HTTP " + postsResp.code();
-                        if (callback != null) mainHandler.post(() -> callback.onResult(0, "Không đọc được danh sách bài Threads: " + err));
-                        return;
-                    }
-
-                    String postsJson = postsResp.body().string();
-                    JsonObject postsRoot = JsonParser.parseString(postsJson).getAsJsonObject();
-                    if (!postsRoot.has("data")) {
-                        if (callback != null) mainHandler.post(() -> callback.onResult(0, "Không tìm thấy bài đăng nào trên Threads."));
-                        return;
-                    }
-
-                    JsonArray postsData = postsRoot.getAsJsonArray("data");
-                    DatabaseHelper db = DatabaseHelper.getInstance(appContext);
-                    List<CommentItem> existing = db.getAllComments();
-                    AIAgentOrchestrator agentOrchestrator = new AIAgentOrchestrator(appContext);
-
-                    int addedCount = 0;
-                    for (int i = 0; i < postsData.size(); i++) {
-                        JsonObject postObj = postsData.get(i).getAsJsonObject();
-                        String postId = postObj.get("id").getAsString();
-                        String fullPostText = postObj.has("text") ? postObj.get("text").getAsString() : "Bài đăng Threads";
-                        String shortPostTitle = fullPostText.length() > 45 ? fullPostText.substring(0, 42) + "..." : fullPostText;
-
-                        String repliesUrl = "https://graph.threads.net/v1.0/" + postId + "/replies?fields=id,text,username,timestamp&access_token=" + Uri.encode(cleanToken);
-                        Request repReq = new Request.Builder().url(repliesUrl).get().build();
-                        try (Response repResp = client.newCall(repReq).execute()) {
-                            if (repResp.isSuccessful() && repResp.body() != null) {
-                                JsonObject repRoot = JsonParser.parseString(repResp.body().string()).getAsJsonObject();
-                                if (repRoot.has("data")) {
-                                    JsonArray repData = repRoot.getAsJsonArray("data");
-                                    for (int j = 0; j < repData.size(); j++) {
-                                        JsonObject r = repData.get(j).getAsJsonObject();
-                                        String replyId = r.get("id").getAsString();
-                                        String replyText = r.has("text") ? r.get("text").getAsString().trim() : "";
-                                        String username = r.has("username") ? r.get("username").getAsString() : "threads_user";
-
-                                        if (replyText.isEmpty() || botPublishedReplyIds.contains(replyId)) {
-                                            continue;
-                                        }
-
-                                        String tagId = "ID:" + replyId;
-                                        boolean alreadyExists = false;
-                                        for (CommentItem ex : existing) {
-                                            if (ex.getTimeAgo() != null && ex.getTimeAgo().contains(tagId)) {
-                                                alreadyExists = true;
-                                                break;
-                                            }
-                                            // Không bao giờ tự trả lời lại câu trả lời của chính Bot
-                                            if (ex.getReplyText() != null && ex.getReplyText().trim().equalsIgnoreCase(replyText)) {
-                                                alreadyExists = true;
-                                                break;
-                                            }
-                                        }
-                                        if (alreadyExists) continue;
-
-                                        // Kiểm tra an toàn nội dung F6 (Tiêu cực vs An toàn)
-                                        String lower = replyText.toLowerCase();
-                                        boolean isNeg = lower.contains("tệ") || lower.contains("dở") || lower.contains("lừa")
-                                                || lower.contains("chán") || lower.contains("kém") || lower.contains("nhảm")
-                                                || lower.contains("scam") || lower.contains("ghét") || lower.contains("ngu")
-                                                || lower.contains("rác");
-
-                                        if (isNeg) {
-                                            // Nhóm Tiêu cực: Chặn tự động trả lời (F6 Safety Rule)
-                                            String riskWarn = "CẢNH BÁO AN TOÀN F6: Bình luận thật trên Threads có dấu hiệu tiêu cực. Agent đã khóa tự động trả lời!";
-                                            CommentItem negComment = new CommentItem(
-                                                    0,
-                                                    SocialPlatform.FACEBOOK,
-                                                    "[Threads] " + shortPostTitle,
-                                                    "@" + username,
-                                                    username.substring(0, 1).toUpperCase(),
-                                                    replyText,
-                                                    "Threads • " + tagId,
-                                                    CommentItem.CATEGORY_NEGATIVE,
-                                                    false,
-                                                    null,
-                                                    null,
-                                                    true,
-                                                    riskWarn
-                                            );
-                                            db.insertComment(negComment);
-                                            existing.add(negComment);
-                                            NotificationHelper.showNotification(
-                                                    appContext,
-                                                    "🛡️ [CẢNH BÁO F6] Bình luận tiêu cực trên Threads",
-                                                    "@" + username + ": \"" + replyText + "\"\n⚠️ Agent đã chặn tự động trả lời. Nhấn để duyệt tay!"
-                                            );
-                                            addedCount++;
-                                        } else {
-                                            // Nhóm An toàn: Gọi AI Agent sinh câu trả lời & tự động bắn lên Threads!
-                                            String category = (lower.contains("?") || lower.contains("sao") || lower.contains("như nào")
-                                                    || lower.contains("ntn") || lower.contains("giá") || lower.contains("bao nhiêu") || lower.contains("hỏi"))
-                                                    ? CommentItem.CATEGORY_QUESTION
-                                                    : CommentItem.CATEGORY_PRAISE;
-
-                                            String aiReply = agentOrchestrator.generateSmartCommentReplySync(fullPostText, username, replyText);
-                                            String publishedReplyId = replyToThreadsCommentSync(myUserId, cleanToken, replyId, aiReply);
-                                            boolean repliedLive = publishedReplyId != null;
-
-                                            if (repliedLive) {
-                                                botPublishedReplyIds.add(publishedReplyId);
-                                            }
-
-                                            CommentItem safeComment = new CommentItem(
-                                                    0,
-                                                    SocialPlatform.FACEBOOK,
-                                                    "[Threads] " + shortPostTitle,
-                                                    "@" + username,
-                                                    username.substring(0, 1).toUpperCase(),
-                                                    replyText,
-                                                    "Threads • " + tagId,
-                                                    category,
-                                                    repliedLive,
-                                                    repliedLive ? aiReply : null,
-                                                    aiReply,
-                                                    false,
-                                                    null
-                                            );
-                                            db.insertComment(safeComment);
-                                            existing.add(safeComment);
-
-                                            final String finalUser = username;
-                                            final String finalReply = aiReply;
-                                            if (repliedLive) {
-                                                NotificationHelper.showNotification(
-                                                        appContext,
-                                                        "🤖 [AI Agent] Đã tự động trả lời @" + username + " trên Threads",
-                                                        "Khách: \"" + replyText + "\"\n👉 Agent: \"" + aiReply + "\""
-                                                );
-                                                mainHandler.post(() -> Toast.makeText(appContext,
-                                                        "🤖 Agent vừa tự động trả lời comment của @" + finalUser + " trên Threads!",
-                                                        Toast.LENGTH_LONG).show());
-                                            } else {
-                                                NotificationHelper.showCommentNotification(appContext, safeComment);
-                                            }
-                                            addedCount++;
-                                        }
-                                    }
-                                }
-                            } else if (repResp.code() == 400 || repResp.code() == 403) {
-                                String errBody = repResp.body() != null ? repResp.body().string() : "";
-                                if (errBody.contains("permission") || errBody.contains("Unsupported get request")) {
-                                    String permMsg = "⚠️ Để Agent đọc được comment thật trên Threads, vào Meta Developer -> Tùy chỉnh -> Bấm '+ Thêm' quyền 'threads_read_replies' và 'threads_manage_replies' rồi tạo lại Token nhé!";
-                                    if (!hasShownPermissionHint) {
-                                        hasShownPermissionHint = true;
-                                        mainHandler.post(() -> Toast.makeText(appContext, permMsg, Toast.LENGTH_LONG).show());
-                                    }
-                                    if (callback != null) mainHandler.post(() -> callback.onResult(0, permMsg));
-                                    return;
-                                }
-                            }
-                        }
-                    }
-
-                    final int finalAdded = addedCount;
-                    if (callback != null) {
-                        mainHandler.post(() -> callback.onResult(finalAdded, finalAdded > 0
-                                ? "🤖 Đã phát hiện & xử lý tự động " + finalAdded + " bình luận mới trên Threads!"
-                                : "Đã quét Threads: Chưa có bình luận mới nào (Bộ quét tự động 12s đang bật)."));
-                    }
+            if (!isScanningInProgress.compareAndSet(false, true)) {
+                if (callback != null) {
+                    mainHandler.post(() -> callback.onResult(0, "Đang đồng bộ Threads..."));
                 }
-            } catch (Exception e) {
-                if (callback != null) mainHandler.post(() -> callback.onResult(0, "Lỗi đồng bộ comment Threads: " + e.getMessage()));
+                return;
+            }
+            try {
+                boolean allowAutoReply = SecurePreferenceManager.getInstance(appContext).isControlledAutoReplyEnabled();
+                SyncResult res = syncThreadsCommentsInternal(appContext, cleanToken, allowAutoReply);
+                SecurePreferenceManager.getInstance(appContext).setLastCommentSyncTime(System.currentTimeMillis());
+                if (res.newCommentsCount > 0) {
+                    notifyCommentsUpdated();
+                }
+                if (callback != null) {
+                    mainHandler.post(() -> callback.onResult(res.newCommentsCount, res.statusMessage));
+                }
             } finally {
-                isScanningInProgress = false;
+                isScanningInProgress.set(false);
             }
         }).start();
     }
 
+    private static SyncResult syncThreadsCommentsInternal(Context appContext, String cleanToken, boolean allowAutoReply) {
+        int addedCount = 0;
+        int autoRepliedCount = 0;
+        int blockedCount = 0;
+
+        try {
+            // 0. Lấy numeric userId & username từ /me để bỏ qua reply của chính kênh
+            String myUserId = "me";
+            String myUsername = "";
+            String meUrl = "https://graph.threads.net/v1.0/me?fields=id,username&access_token=" + Uri.encode(cleanToken);
+            try (Response meResp = client.newCall(new Request.Builder().url(meUrl).get().build()).execute()) {
+                if (meResp.isSuccessful() && meResp.body() != null) {
+                    JsonObject meObj = JsonParser.parseString(meResp.body().string()).getAsJsonObject();
+                    if (meObj.has("id") && !meObj.get("id").isJsonNull()) {
+                        myUserId = meObj.get("id").getAsString();
+                    }
+                    if (meObj.has("username") && !meObj.get("username").isJsonNull()) {
+                        myUsername = meObj.get("username").getAsString();
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // 1. Lấy 5 bài viết mới nhất trên Threads
+            String postsUrl = "https://graph.threads.net/v1.0/me/threads?fields=id,text&limit=5&access_token=" + Uri.encode(cleanToken);
+            Request postsReq = new Request.Builder().url(postsUrl).get().build();
+            try (Response postsResp = client.newCall(postsReq).execute()) {
+                if (!postsResp.isSuccessful() || postsResp.body() == null) {
+                    String err = postsResp.body() != null ? postsResp.body().string() : "HTTP " + postsResp.code();
+                    return new SyncResult(0, 0, 0, "⚠️ Không đọc được danh sách bài Threads: " + err);
+                }
+
+                JsonObject postsRoot = JsonParser.parseString(postsResp.body().string()).getAsJsonObject();
+                if (!postsRoot.has("data")) {
+                    return new SyncResult(0, 0, 0, "Không tìm thấy bài đăng nào trên Threads.");
+                }
+
+                JsonArray postsData = postsRoot.getAsJsonArray("data");
+                DatabaseHelper db = DatabaseHelper.getInstance(appContext);
+                List<CommentItem> existing = db.getAllComments();
+                AIAgentOrchestrator agentOrchestrator = new AIAgentOrchestrator(appContext);
+
+                for (int i = 0; i < postsData.size(); i++) {
+                    JsonObject postObj = postsData.get(i).getAsJsonObject();
+                    String postId = postObj.get("id").getAsString();
+                    String fullPostText = (postObj.has("text") && !postObj.get("text").isJsonNull())
+                            ? postObj.get("text").getAsString()
+                            : "Bài đăng Threads";
+                    String shortPostTitle = fullPostText.length() > 48
+                            ? fullPostText.substring(0, 45) + "..."
+                            : fullPostText;
+
+                    String repliesUrl = "https://graph.threads.net/v1.0/" + postId
+                            + "/replies?fields=id,text,username,timestamp&access_token=" + Uri.encode(cleanToken);
+                    Request repReq = new Request.Builder().url(repliesUrl).get().build();
+                    try (Response repResp = client.newCall(repReq).execute()) {
+                        if (repResp.isSuccessful() && repResp.body() != null) {
+                            JsonObject repRoot = JsonParser.parseString(repResp.body().string()).getAsJsonObject();
+                            if (!repRoot.has("data")) continue;
+
+                            JsonArray repData = repRoot.getAsJsonArray("data");
+                            for (int j = 0; j < repData.size(); j++) {
+                                JsonObject r = repData.get(j).getAsJsonObject();
+                                String replyId = r.get("id").getAsString();
+                                String replyText = (r.has("text") && !r.get("text").isJsonNull())
+                                        ? r.get("text").getAsString().trim()
+                                        : "";
+                                String username = (r.has("username") && !r.get("username").isJsonNull())
+                                        ? r.get("username").getAsString()
+                                        : "threads_user";
+
+                                if (replyText.isEmpty()
+                                        || botPublishedReplyIds.contains(replyId)
+                                        || (!myUsername.isEmpty() && myUsername.equalsIgnoreCase(username))) {
+                                    continue;
+                                }
+
+                                if (isDuplicateComment(existing, replyId, replyText)) {
+                                    continue;
+                                }
+
+                                // Phân loại 5 nhóm bằng AI + kiểm tra PII + độ tin cậy + soạn gợi ý theo ngữ cảnh bài viết
+                                CommentSafetyPolicy.CommentAnalysis analysis = agentOrchestrator.analyzeCommentSync(
+                                        SocialPlatform.THREADS,
+                                        shortPostTitle,
+                                        fullPostText,
+                                        "@" + username,
+                                        replyText
+                                );
+
+                                CommentItem comment = new CommentItem();
+                                comment.setPlatform(SocialPlatform.THREADS);
+                                comment.setPostTitle(shortPostTitle);
+                                comment.setPostContent(fullPostText);
+                                comment.setAuthorName("@" + username);
+                                comment.setAuthorInitial(username.isEmpty() ? "T" : username.substring(0, 1).toUpperCase(Locale.ROOT));
+                                comment.setContent(replyText);
+                                comment.setTimeAgo("Threads • Vừa đồng bộ");
+                                comment.setExternalCommentId(replyId);
+                                CommentSafetyPolicy.applyAnalysisToComment(comment, analysis);
+
+                                CommentSafetyPolicy.AutoReplyDecision decision = CommentSafetyPolicy.evaluateAutoReply(comment);
+                                boolean repliedLive = false;
+                                if (allowAutoReply && decision.allowed
+                                        && comment.getAiSuggestedReply() != null
+                                        && !comment.getAiSuggestedReply().trim().isEmpty()) {
+                                    String publishedReplyId = replyToThreadsCommentSync(
+                                            myUserId, cleanToken, replyId, comment.getAiSuggestedReply()
+                                    );
+                                    if (publishedReplyId != null) {
+                                        botPublishedReplyIds.add(publishedReplyId);
+                                        comment.setAnswered(true);
+                                        comment.setAutoReplied(true);
+                                        comment.setReplyText(comment.getAiSuggestedReply());
+                                        repliedLive = true;
+                                        autoRepliedCount++;
+                                    }
+                                } else if (!decision.allowed) {
+                                    blockedCount++;
+                                }
+
+                                db.insertComment(comment);
+                                existing.add(comment);
+                                addedCount++;
+
+                                notifyIncomingComment(appContext, comment, repliedLive);
+                            }
+                        } else if (repResp.code() == 400 || repResp.code() == 403) {
+                            String errBody = repResp.body() != null ? repResp.body().string() : "";
+                            if (errBody.contains("permission") || errBody.contains("Unsupported get request")) {
+                                String permMsg = "⚠️ Để đọc comment thật trên Threads, cần cấp quyền 'threads_read_replies' và 'threads_manage_replies' cho Token.";
+                                if (!hasShownPermissionHint) {
+                                    hasShownPermissionHint = true;
+                                    mainHandler.post(() -> Toast.makeText(appContext, permMsg, Toast.LENGTH_LONG).show());
+                                }
+                                return new SyncResult(addedCount, autoRepliedCount, blockedCount, permMsg);
+                            }
+                        }
+                    }
+                }
+
+                String msg = addedCount > 0
+                        ? "Đã đồng bộ " + addedCount + " bình luận mới trên Threads."
+                        : "Đã quét Threads: Chưa có bình luận mới.";
+                return new SyncResult(addedCount, autoRepliedCount, blockedCount, msg);
+            }
+        } catch (Exception e) {
+            return new SyncResult(addedCount, autoRepliedCount, blockedCount, "⚠️ Lỗi đồng bộ Threads: " + e.getMessage());
+        }
+    }
+
     /**
-     * Gửi trả lời bình luận đồng bộ (Synchronous) dành cho AI Agent chạy ngầm mỗi 12s
+     * Đọc bình luận thật từ Facebook Page qua Meta Graph API v19.0
+     * 1. GET https://graph.facebook.com/v19.0/{page_id}/posts?fields=id,message&limit=5
+     * 2. GET https://graph.facebook.com/v19.0/{post_id}/comments?fields=id,message,from,created_time
      */
+    private static SyncResult syncFacebookCommentsInternal(Context appContext,
+                                                           String pageId,
+                                                           String pageAccessToken,
+                                                           boolean allowAutoReply) {
+        int addedCount = 0;
+        int autoRepliedCount = 0;
+        int blockedCount = 0;
+
+        try {
+            String postsUrl = "https://graph.facebook.com/v19.0/" + Uri.encode(pageId)
+                    + "/posts?fields=id,message&limit=5&access_token=" + Uri.encode(pageAccessToken);
+            try (Response postsResp = client.newCall(new Request.Builder().url(postsUrl).get().build()).execute()) {
+                if (!postsResp.isSuccessful() || postsResp.body() == null) {
+                    String err = postsResp.body() != null ? postsResp.body().string() : "HTTP " + postsResp.code();
+                    return new SyncResult(0, 0, 0, "⚠️ Không đọc được bài viết Facebook Page: " + err);
+                }
+
+                JsonObject postsRoot = JsonParser.parseString(postsResp.body().string()).getAsJsonObject();
+                if (!postsRoot.has("data")) {
+                    return new SyncResult(0, 0, 0, "Không tìm thấy bài viết trên Facebook Page.");
+                }
+
+                JsonArray postsData = postsRoot.getAsJsonArray("data");
+                DatabaseHelper db = DatabaseHelper.getInstance(appContext);
+                List<CommentItem> existing = db.getAllComments();
+                AIAgentOrchestrator agentOrchestrator = new AIAgentOrchestrator(appContext);
+
+                for (int i = 0; i < postsData.size(); i++) {
+                    JsonObject postObj = postsData.get(i).getAsJsonObject();
+                    String postId = postObj.get("id").getAsString();
+                    String fullPostMessage = (postObj.has("message") && !postObj.get("message").isJsonNull())
+                            ? postObj.get("message").getAsString()
+                            : "Bài đăng Facebook Page";
+                    String shortPostTitle = fullPostMessage.length() > 48
+                            ? fullPostMessage.substring(0, 45) + "..."
+                            : fullPostMessage;
+
+                    String commentsUrl = "https://graph.facebook.com/v19.0/" + Uri.encode(postId)
+                            + "/comments?fields=id,message,from,created_time&limit=15&access_token=" + Uri.encode(pageAccessToken);
+                    try (Response cResp = client.newCall(new Request.Builder().url(commentsUrl).get().build()).execute()) {
+                        if (!cResp.isSuccessful() || cResp.body() == null) continue;
+                        JsonObject cRoot = JsonParser.parseString(cResp.body().string()).getAsJsonObject();
+                        if (!cRoot.has("data")) continue;
+
+                        JsonArray cData = cRoot.getAsJsonArray("data");
+                        for (int j = 0; j < cData.size(); j++) {
+                            JsonObject cObj = cData.get(j).getAsJsonObject();
+                            String commentId = cObj.get("id").getAsString();
+                            String commentText = (cObj.has("message") && !cObj.get("message").isJsonNull())
+                                    ? cObj.get("message").getAsString().trim()
+                                    : "";
+
+                            String authorName = "Người dùng Facebook";
+                            String authorId = "";
+                            if (cObj.has("from") && cObj.get("from").isJsonObject()) {
+                                JsonObject fromObj = cObj.getAsJsonObject("from");
+                                if (fromObj.has("name") && !fromObj.get("name").isJsonNull()) {
+                                    authorName = fromObj.get("name").getAsString();
+                                }
+                                if (fromObj.has("id") && !fromObj.get("id").isJsonNull()) {
+                                    authorId = fromObj.get("id").getAsString();
+                                }
+                            }
+
+                            if (commentText.isEmpty()
+                                    || pageId.equals(authorId)
+                                    || botPublishedReplyIds.contains(commentId)
+                                    || isDuplicateComment(existing, commentId, commentText)) {
+                                continue;
+                            }
+
+                            CommentSafetyPolicy.CommentAnalysis analysis = agentOrchestrator.analyzeCommentSync(
+                                    SocialPlatform.FACEBOOK,
+                                    shortPostTitle,
+                                    fullPostMessage,
+                                    authorName,
+                                    commentText
+                            );
+
+                            CommentItem comment = new CommentItem();
+                            comment.setPlatform(SocialPlatform.FACEBOOK);
+                            comment.setPostTitle(shortPostTitle);
+                            comment.setPostContent(fullPostMessage);
+                            comment.setAuthorName(authorName);
+                            comment.setAuthorInitial(authorName.isEmpty() ? "F" : authorName.substring(0, 1).toUpperCase(Locale.ROOT));
+                            comment.setContent(commentText);
+                            comment.setTimeAgo("Facebook • Vừa đồng bộ");
+                            comment.setExternalCommentId(commentId);
+                            CommentSafetyPolicy.applyAnalysisToComment(comment, analysis);
+
+                            CommentSafetyPolicy.AutoReplyDecision decision = CommentSafetyPolicy.evaluateAutoReply(comment);
+                            boolean repliedLive = false;
+                            if (allowAutoReply && decision.allowed
+                                    && comment.getAiSuggestedReply() != null
+                                    && !comment.getAiSuggestedReply().trim().isEmpty()) {
+                                String publishedReplyId = replyToFacebookCommentSync(
+                                        pageAccessToken, commentId, comment.getAiSuggestedReply()
+                                );
+                                if (publishedReplyId != null) {
+                                    botPublishedReplyIds.add(publishedReplyId);
+                                    comment.setAnswered(true);
+                                    comment.setAutoReplied(true);
+                                    comment.setReplyText(comment.getAiSuggestedReply());
+                                    repliedLive = true;
+                                    autoRepliedCount++;
+                                }
+                            } else if (!decision.allowed) {
+                                blockedCount++;
+                            }
+
+                            db.insertComment(comment);
+                            existing.add(comment);
+                            addedCount++;
+
+                            notifyIncomingComment(appContext, comment, repliedLive);
+                        }
+                    }
+                }
+
+                String msg = addedCount > 0
+                        ? "Đã đồng bộ " + addedCount + " bình luận mới trên Facebook Page."
+                        : "Đã quét Facebook Page: Chưa có bình luận mới.";
+                return new SyncResult(addedCount, autoRepliedCount, blockedCount, msg);
+            }
+        } catch (Exception e) {
+            return new SyncResult(addedCount, autoRepliedCount, blockedCount, "⚠️ Lỗi đồng bộ Facebook: " + e.getMessage());
+        }
+    }
+
+    private static boolean isDuplicateComment(List<CommentItem> existing, String externalId, String commentText) {
+        if (existing == null) return false;
+        String tagId = "ID:" + externalId;
+        for (CommentItem ex : existing) {
+            if (externalId != null && externalId.equals(ex.getExternalCommentId())) {
+                return true;
+            }
+            if (ex.getTimeAgo() != null && ex.getTimeAgo().contains(tagId)) {
+                return true;
+            }
+            if (ex.getReplyText() != null && ex.getReplyText().trim().equalsIgnoreCase(commentText)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void notifyIncomingComment(Context appContext, CommentItem comment, boolean repliedLive) {
+        if (repliedLive) {
+            NotificationHelper.showNotification(
+                    appContext,
+                    "🤖 [AI Agent] Tự động trả lời (" + comment.getPlatform().getShortName() + ")",
+                    comment.getAuthorName() + ": \"" + comment.getContent() + "\"\n👉 Bot: \"" + comment.getReplyText() + "\"",
+                    comment.getId()
+            );
+        } else if (CommentSafetyPolicy.shouldShowSafetyAlert(comment)) {
+            NotificationHelper.showNotification(
+                    appContext,
+                    "🛡️ [Cảnh báo F6] Khóa tự động trả lời (" + comment.getPlatform().getShortName() + ")",
+                    comment.getAuthorName() + ": \"" + comment.getContent() + "\"\n⚠️ "
+                            + CommentSafetyPolicy.getSafetyBannerSummary(comment),
+                    comment.getId()
+            );
+        } else {
+            NotificationHelper.showCommentNotification(appContext, comment);
+        }
+    }
+
+    /**
+     * Gửi trả lời bình luận Threads đồng bộ (Synchronous) dành cho Worker & Controlled Auto-Reply Bot
+     */
+    public static String replyToThreadsCommentSync(String cleanToken, String replyToCommentId, String replyText) {
+        if (cleanToken == null || cleanToken.trim().isEmpty() || replyToCommentId == null || replyToCommentId.trim().isEmpty()) {
+            return null;
+        }
+        String token = cleanToken.trim();
+        String userId = "me";
+        try {
+            String meUrl = "https://graph.threads.net/v1.0/me?fields=id&access_token=" + Uri.encode(token);
+            try (Response meResp = client.newCall(new Request.Builder().url(meUrl).get().build()).execute()) {
+                if (meResp.isSuccessful() && meResp.body() != null) {
+                    JsonObject obj = JsonParser.parseString(meResp.body().string()).getAsJsonObject();
+                    if (obj.has("id") && !obj.get("id").isJsonNull()) {
+                        userId = obj.get("id").getAsString();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return replyToThreadsCommentSync(userId, token, replyToCommentId.trim(), replyText);
+    }
+
     private static String replyToThreadsCommentSync(String resolvedUserId, String cleanToken, String replyToCommentId, String replyText) {
         try {
             String createUrl = "https://graph.threads.net/v1.0/" + resolvedUserId + "/threads";
@@ -610,12 +887,101 @@ public class RealSocialPublisher {
                 try (Response pubResp = client.newCall(new Request.Builder().url(publishUrl).post(pubBody).build()).execute()) {
                     if (pubResp.isSuccessful() && pubResp.body() != null) {
                         JsonObject pubObj = JsonParser.parseString(pubResp.body().string()).getAsJsonObject();
-                        return pubObj.has("id") ? pubObj.get("id").getAsString() : creationId;
+                        String pubId = pubObj.has("id") ? pubObj.get("id").getAsString() : creationId;
+                        botPublishedReplyIds.add(pubId);
+                        return pubId;
                     }
                 }
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /**
+     * Gửi trả lời bình luận Facebook Page đồng bộ (Synchronous) qua Meta Graph API v19.0
+     * POST https://graph.facebook.com/v19.0/{comment_id}/comments
+     */
+    public static String replyToFacebookCommentSync(String pageAccessToken, String commentId, String replyText) {
+        if (pageAccessToken == null || pageAccessToken.trim().isEmpty()
+                || commentId == null || commentId.trim().isEmpty()
+                || replyText == null || replyText.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String url = "https://graph.facebook.com/v19.0/" + Uri.encode(commentId.trim()) + "/comments";
+            RequestBody body = new FormBody.Builder()
+                    .add("message", replyText.trim())
+                    .add("access_token", pageAccessToken.trim())
+                    .build();
+
+            try (Response resp = client.newCall(new Request.Builder().url(url).post(body).build()).execute()) {
+                if (resp.isSuccessful() && resp.body() != null) {
+                    JsonObject obj = JsonParser.parseString(resp.body().string()).getAsJsonObject();
+                    String newReplyId = obj.has("id") ? obj.get("id").getAsString() : commentId;
+                    botPublishedReplyIds.add(newReplyId);
+                    return newReplyId;
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    /**
+     * Trả lời trực tiếp bình luận Facebook Page bất đồng bộ qua Meta Graph API v19.0
+     */
+    public static void replyToFacebookCommentViaApi(String pageAccessToken,
+                                                    String commentId,
+                                                    String replyText,
+                                                    ApiPublishCallback callback) {
+        if (pageAccessToken == null || pageAccessToken.trim().isEmpty()) {
+            if (callback != null) mainHandler.post(() -> callback.onError("Thiếu Facebook Page Access Token!"));
+            return;
+        }
+        if (commentId == null || commentId.trim().isEmpty()) {
+            if (callback != null) mainHandler.post(() -> callback.onError("Thiếu ID bình luận Facebook!"));
+            return;
+        }
+
+        String url = "https://graph.facebook.com/v19.0/" + Uri.encode(commentId.trim()) + "/comments";
+        RequestBody body = new FormBody.Builder()
+                .add("message", replyText != null ? replyText.trim() : "")
+                .add("access_token", pageAccessToken.trim())
+                .build();
+
+        client.newCall(new Request.Builder().url(url).post(body).build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                if (callback != null) {
+                    mainHandler.post(() -> callback.onError("Lỗi kết nối Facebook Graph API: " + e.getMessage()));
+                }
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try (Response resp = response) {
+                    if (resp.isSuccessful() && resp.body() != null) {
+                        String json = resp.body().string();
+                        String newId = commentId;
+                        try {
+                            JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+                            if (obj.has("id") && !obj.get("id").isJsonNull()) {
+                                newId = obj.get("id").getAsString();
+                                botPublishedReplyIds.add(newId);
+                            }
+                        } catch (Exception ignored) {}
+                        final String finalId = newId;
+                        if (callback != null) {
+                            mainHandler.post(() -> callback.onSuccess("https://www.facebook.com/" + finalId, finalId));
+                        }
+                    } else {
+                        String err = resp.body() != null ? resp.body().string() : "HTTP " + resp.code();
+                        if (callback != null) {
+                            mainHandler.post(() -> callback.onError("Facebook Graph API từ chối trả lời: " + err));
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /**
