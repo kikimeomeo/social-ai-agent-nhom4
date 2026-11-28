@@ -137,10 +137,8 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
         void bind(CommentItem item) {
             if (item.getPlatform() == SocialPlatform.FACEBOOK) {
                 binding.ivCommentPlatform.setImageResource(R.drawable.ic_facebook);
-            } else if (item.getPlatform() == SocialPlatform.THREADS) {
-                binding.ivCommentPlatform.setImageResource(R.drawable.ic_threads);
             } else {
-                binding.ivCommentPlatform.setImageResource(R.drawable.ic_linkedin);
+                binding.ivCommentPlatform.setImageResource(R.drawable.ic_threads);
             }
 
             String postTitle = item.getPostTitle() != null ? item.getPostTitle() : "Bài viết";

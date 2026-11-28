@@ -338,7 +338,7 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Threads Card (keeps tvLi* IDs for compatibility) -->
+                <!-- Threads Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardThreadsChannel"
                     style="@style/SocialCard"
@@ -369,7 +369,7 @@
                             android:orientation="vertical">
 
                             <TextView
-                                android:id="@+id/tvLiProfileName"
+                                android:id="@+id/tvThreadsProfileName"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:ellipsize="end"
@@ -380,7 +380,7 @@
                                 android:textStyle="bold" />
 
                             <TextView
-                                android:id="@+id/tvLiStatus"
+                                android:id="@+id/tvThreadsStatus"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
@@ -390,7 +390,7 @@
                                 android:textStyle="bold" />
 
                             <TextView
-                                android:id="@+id/tvLiFollowers"
+                                android:id="@+id/tvThreadsFollowers"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:visibility="gone" />

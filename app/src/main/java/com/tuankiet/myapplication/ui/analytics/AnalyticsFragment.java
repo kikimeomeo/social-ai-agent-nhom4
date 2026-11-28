@@ -45,8 +45,8 @@ public class AnalyticsFragment extends Fragment {
 
         AnalyticsData data = repository.getAnalyticsData();
 
-        // Persist snapshot to SQLite history
-        DatabaseHelper.getInstance(requireContext()).insertAnalyticsSnapshot(
+        // Persist at most one snapshot per day to avoid inflating chart bars on every tab switch
+        DatabaseHelper.getInstance(requireContext()).upsertDailyAnalyticsSnapshot(
                 "ALL", data.getTotalReach(), data.getTotalLikes(), data.getTotalComments(), 0, 1540
         );
 
@@ -70,14 +70,17 @@ public class AnalyticsFragment extends Fragment {
         binding.tvFbComments.setText(String.format("%,d", data.getFacebookComments()));
         binding.tvFbRate.setText(String.format("%.2f%%", data.getFacebookEngagementRate()));
 
-        binding.tvLiReach.setText(String.format("%,d", data.getThreadsReach()));
-        binding.tvLiLikes.setText(String.format("%,d", data.getThreadsLikes()));
-        binding.tvLiComments.setText(String.format("%,d", data.getThreadsComments()));
-        binding.tvLiRate.setText(String.format("%.2f%%", data.getThreadsEngagementRate()));
+        binding.tvThreadsReach.setText(String.format("%,d", data.getThreadsReach()));
+        binding.tvThreadsLikes.setText(String.format("%,d", data.getThreadsLikes()));
+        binding.tvThreadsComments.setText(String.format("%,d", data.getThreadsComments()));
+        binding.tvThreadsRate.setText(String.format("%.2f%%", data.getThreadsEngagementRate()));
 
         // 3. AI Weekly Summary Report
         binding.tvTopPost.setText(data.getTopPerformingPost());
-        binding.tvWeeklySummary.setText(data.getWeeklyAiSummary());
+        String summary = data.getWeeklyAiSummary() != null
+                ? data.getWeeklyAiSummary().replace("LinkedIn", "Threads")
+                : "";
+        binding.tvWeeklySummary.setText(summary);
         String advice = data.getNextWeekAdvice() != null
                 ? data.getNextWeekAdvice().replace("LinkedIn", "Threads")
                 : "";

@@ -90,8 +90,8 @@ public class SecurePreferenceManager {
         String rawApiKey = prefs.getString(KEY_API_KEY, "");
         String apiKey = decryptSecret(rawApiKey);
         boolean isDemo = prefs.getBoolean(KEY_DEMO_MODE, true); // Demo mode by default
-        int tokens = prefs.getInt(KEY_TOKENS, 12450);
-        float cost = prefs.getFloat(KEY_COST, 0.048f);
+        int tokens = prefs.getInt(KEY_TOKENS, 0);
+        float cost = prefs.getFloat(KEY_COST, 0.0f);
         String modelPost = prefs.getString(KEY_MODEL_POST, "gemini-3.1-flash-lite");
         String modelComment = prefs.getString(KEY_MODEL_COMMENT, "gemini-2.5-flash-lite");
         String modelImage = prefs.getString(KEY_MODEL_IMAGE, "gemini-2.0-flash");
@@ -124,18 +124,18 @@ public class SecurePreferenceManager {
     }
 
     public void addTokens(int tokens, double cost) {
-        int currentTokens = prefs.getInt(KEY_TOKENS, 12450);
-        float currentCost = prefs.getFloat(KEY_COST, 0.048f);
+        int currentTokens = prefs.getInt(KEY_TOKENS, 0);
+        float currentCost = prefs.getFloat(KEY_COST, 0.0f);
 
         String todayKey = "tokens_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
         String todayCostKey = "cost_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-        int currentDayTokens = prefs.getInt(todayKey, 3450);
-        float currentDayCost = prefs.getFloat(todayCostKey, 0.012f);
+        int currentDayTokens = prefs.getInt(todayKey, 0);
+        float currentDayCost = prefs.getFloat(todayCostKey, 0.0f);
 
         String monthKey = "tokens_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
         String monthCostKey = "cost_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
-        int currentMonthTokens = prefs.getInt(monthKey, 14240);
-        float currentMonthCost = prefs.getFloat(monthCostKey, 0.057f);
+        int currentMonthTokens = prefs.getInt(monthKey, 0);
+        float currentMonthCost = prefs.getFloat(monthCostKey, 0.0f);
 
         prefs.edit()
                 .putInt(KEY_TOKENS, currentTokens + tokens)
@@ -149,29 +149,37 @@ public class SecurePreferenceManager {
 
     public int getTodayTokens() {
         String todayKey = "tokens_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-        return prefs.getInt(todayKey, 3450);
+        return prefs.getInt(todayKey, 0);
     }
 
     public float getTodayCost() {
         String todayCostKey = "cost_day_" + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-        return prefs.getFloat(todayCostKey, 0.012f);
+        return prefs.getFloat(todayCostKey, 0.0f);
     }
 
     public int getThisMonthTokens() {
         String monthKey = "tokens_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
-        return prefs.getInt(monthKey, 14240);
+        return prefs.getInt(monthKey, 0);
     }
 
     public float getThisMonthCost() {
         String monthCostKey = "cost_month_" + new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
-        return prefs.getFloat(monthCostKey, 0.057f);
+        return prefs.getFloat(monthCostKey, 0.0f);
     }
 
     public void resetTokenStats() {
-        prefs.edit()
+        SharedPreferences.Editor editor = prefs.edit()
                 .putInt(KEY_TOKENS, 0)
-                .putFloat(KEY_COST, 0.0f)
-                .apply();
+                .putFloat(KEY_COST, 0.0f);
+        for (String key : prefs.getAll().keySet()) {
+            if (key.startsWith("tokens_day_")
+                    || key.startsWith("cost_day_")
+                    || key.startsWith("tokens_month_")
+                    || key.startsWith("cost_month_")) {
+                editor.remove(key);
+            }
+        }
+        editor.apply();
     }
 
     // --- OAuth 2.0 Token Storage ---
@@ -296,7 +304,11 @@ public class SecurePreferenceManager {
     }
 
     public void saveThreadsToken(String token) {
-        saveThreadsAccount("me", "threads_user", token, "", 60L * 86400L);
+        String existingUserId = getThreadsUserId();
+        String existingUsername = getThreadsUsername();
+        String userId = (existingUserId != null && !existingUserId.trim().isEmpty()) ? existingUserId.trim() : "me";
+        String username = (existingUsername != null && !existingUsername.trim().isEmpty()) ? existingUsername.trim() : "threads_user";
+        saveThreadsAccount(userId, username, token, getThreadsRefreshToken(), 60L * 86400L);
     }
 
     public void saveThreadsAccount(String userId, String username, String token, String refreshToken, long expiresInSeconds) {

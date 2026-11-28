@@ -60,9 +60,8 @@ public class MockDataRepository {
         );
         dbHelper.insertOrUpdateAccount(thAccount);
 
-        // 2. Seed Recent Posts
-        Post post1 = new Post(
-                0,
+        // 2. Seed Recent Posts (Facebook Page + Threads)
+        Post post1 = createSeedPost(
                 "5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026",
                 "Chuyên gia",
                 "🚀 5 XU HƯỚNG AI KHÔNG THỂ BỎ QUA TRONG NĂM 2026!\n\n" +
@@ -72,26 +71,19 @@ public class MockDataRepository {
                         "4. Tự động hóa quy trình quản lý mạng xã hội cá nhân.\n" +
                         "5. Bảo mật dữ liệu & Privacy-first AI.\n\n" +
                         "👉 Anh em đang ứng dụng xu hướng nào trong công việc? Bình luận bên dưới cùng bàn luận nhé!\n#AI2026 #TechTrends #SocialAI #FutureTech",
-                "5 Key AI Trends Shaping Tech Ecosystems in 2026 🌐\n\n" +
-                        "As artificial intelligence transitions from experimentation to core operational infrastructure, leaders must prioritize these architectural shifts:\n\n" +
-                        "• Edge & On-Device Intelligence: Drastic reduction in latency and cloud inference costs.\n" +
-                        "• Autonomous Multi-Agent Orchestration: Specialization over monolithic general models.\n" +
-                        "• Enterprise Data Sovereignty: Private fine-tuning on domain-specific datasets.\n\n" +
-                        "How is your engineering team adapting to these paradigms? Let's connect and discuss.\n\n#ArtificialIntelligence #Leadership #SoftwareEngineering #AgenticAI",
+                "5 xu hướng AI đang định hình sản phẩm công nghệ 2026 🌐\n\n" +
+                        "• SLM chạy trực tiếp on-device giảm độ trễ & chi phí.\n" +
+                        "• Multi-Agent phân vai thay thế prompt đơn lẻ.\n" +
+                        "• Privacy-first AI giữ dữ liệu trên thiết bị.\n\n" +
+                        "Team bạn đã áp dụng hướng nào rồi? Cùng thảo luận nhé! #AI2026 #AgenticAI",
                 Post.STATUS_PUBLISHED,
-                true,
-                true,
                 System.currentTimeMillis() - 86400000L * 2,
                 "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe",
-                7700,
-                550,
-                73,
-                24
+                7700, 550, 73, 24
         );
         dbHelper.insertPost(post1);
 
-        Post post2 = new Post(
-                0,
+        Post post2 = createSeedPost(
                 "Tại sao Mobile Developer phải học On-Device AI?",
                 "Thân thiện",
                 "Chào mọi người! 👋 Tại sao năm 2026 là thời điểm vàng để Mobile Dev chuyển mình sang On-Device AI?\n\n" +
@@ -99,44 +91,31 @@ public class MockDataRepository {
                         "💡 Ứng dụng chạy mượt, bảo mật dữ liệu tuyệt đối cho người dùng.\n" +
                         "💡 Tiết kiệm chi phí token cho startup hàng ngàn đô mỗi tháng.\n\n" +
                         "Anh em nào quan tâm để lại 1 like, mình sẽ share source code demo app SocialAI viết bằng Java Native nhé! 📱✨\n#MobileDev #AndroidNative #OnDeviceAI",
-                "Why Mobile Developers Must Embrace On-Device Machine Learning Today 📱\n\n" +
-                        "The edge compute renaissance is here. By shifting inference workloads directly to the client:\n" +
-                        "1. Zero network latency for real-time user experiences.\n" +
-                        "2. Absolute client-side data privacy (HIPAA & GDPR friendly).\n" +
-                        "3. Predictable cost margins independent of token billing.\n\n" +
-                        "The gap between cloud AI and local device execution is closing fast. Continuous learning is our best leverage.\n\n#AndroidDev #MachineLearning #EdgeComputing",
+                "Mobile Dev nên học On-Device AI ngay từ hôm nay 📱\n\n" +
+                        "1. Phản hồi gần như tức thì, không phụ thuộc mạng.\n" +
+                        "2. Bảo mật dữ liệu ngay trên máy người dùng.\n" +
+                        "3. Tiết kiệm đáng kể chi phí API mỗi tháng.\n\n" +
+                        "Bạn đang dùng thư viện nào cho AI trên Android? #AndroidDev #OnDeviceAI",
                 Post.STATUS_PUBLISHED,
-                true,
-                true,
                 System.currentTimeMillis() - 86400000L * 4,
                 "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6",
-                7300,
-                557,
-                56,
-                18
+                7300, 557, 56, 18
         );
         dbHelper.insertPost(post2);
 
-        Post post3 = new Post(
-                0,
+        Post post3 = createSeedPost(
                 "Kiến trúc Orchestrator - Sub-Agents trong quản lý Social Media",
                 "Chuyên gia",
-                "🤖 Khám phá mô hình Orchestrator - SubAgents: Bí quyết để một AI Agent có thể quản lý đồng thời Facebook Page và LinkedIn mà không bị trùng lặp nội dung!\n\n" +
+                "🤖 Khám phá mô hình Orchestrator - SubAgents: Bí quyết để một AI Agent có thể quản lý đồng thời Facebook Page và Threads mà không bị trùng lặp nội dung!\n\n" +
                         "Mỗi nền tảng có một 'Sub-Agent' chuyên trách theo ngữ cảnh và văn phong riêng biệt. Đón đọc bài phân tích chi tiết vào 20h tối nay nhé! 🔥",
-                "Architectural Blueprint: Orchestrator - Sub-Agent Paradigm for Multi-Channel Publishing 🏗️\n\n" +
-                        "Monolithic prompting fails when distributing content across distinct platforms with divergent demographics. Our solution:\n" +
-                        "- Master Orchestrator: Synthesizes core brief and strategic intent.\n" +
-                        "- Specialized Platform Agents: Optimize voice, formatting, and engagement hooks independently.\n" +
-                        "Full architecture breakdown in draft review.",
+                "Kiến trúc Orchestrator - Sub-Agent cho đăng bài đa kênh 🏗️\n\n" +
+                        "• Master Orchestrator: Tóm tắt brief và định hướng nội dung.\n" +
+                        "• Sub-Agents: Tối ưu riêng giọng văn Facebook Page & giới hạn ≤ 500 ký tự của Threads.\n\n" +
+                        "Đang ở bản nháp để duyệt trước khi phát hành! #SocialAI #MultiAgent",
                 Post.STATUS_DRAFT,
-                true,
-                true,
                 System.currentTimeMillis() - 3600000L * 5,
                 null,
-                0,
-                0,
-                0,
-                0
+                0, 0, 0, 0
         );
         dbHelper.insertPost(post3);
 
@@ -278,15 +257,49 @@ public class MockDataRepository {
         AgentLog log3 = new AgentLog(
                 0,
                 System.currentTimeMillis() - 86400000L * 2,
-                "LinkedIn Sub-agent",
-                "LinkedIn Thought Leader",
-                "Convert brief into professional B2B perspective with strategic takeaways",
-                "Drafted executive LinkedIn post with bulleted takeaways and career hashtags.",
-                750,
-                0.0029,
-                1120
+                "Threads Sub-agent",
+                "Threads Concise Writer",
+                "Convert brief into conversational Threads post under 500 characters",
+                "Drafted concise Threads post (312 chars) with open question hook.",
+                620,
+                0.0024,
+                960
         );
         dbHelper.insertLog(log3);
+    }
+
+    private Post createSeedPost(String topic,
+                                String tone,
+                                String contentFacebook,
+                                String contentThreads,
+                                String status,
+                                long createdAt,
+                                String imageUrl,
+                                int reachCount,
+                                int likeCount,
+                                int commentCount,
+                                int shareCount) {
+        Post post = new Post();
+        post.setTopic(topic);
+        post.setTone(tone);
+        post.setLanguage("Tiếng Việt");
+        post.setContentFacebook(contentFacebook);
+        post.setContentThreads(contentThreads);
+        post.setContentLinkedIn("");
+        post.setStatus(status);
+        post.setTargetFacebook(true);
+        post.setTargetThreads(true);
+        post.setTargetLinkedIn(false);
+        post.setCreatedAt(createdAt);
+        post.setImageUrl(imageUrl);
+        post.setReachCount(reachCount);
+        post.setLikeCount(likeCount);
+        post.setCommentCount(commentCount);
+        post.setShareCount(shareCount);
+        boolean published = Post.STATUS_PUBLISHED.equals(status);
+        post.setPublishedFacebook(published);
+        post.setPublishedThreads(published);
+        return post;
     }
 
     public List<Post> getPosts() {
@@ -411,14 +424,14 @@ public class MockDataRepository {
         data.setFacebookComments(112);
         data.setFacebookEngagementRate(5.15);
 
-        data.setLinkedinReach(14200);
-        data.setLinkedinLikes(1120);
-        data.setLinkedinComments(145);
-        data.setLinkedinEngagementRate(8.91);
+        data.setThreadsReach(14200);
+        data.setThreadsLikes(1120);
+        data.setThreadsComments(145);
+        data.setThreadsEngagementRate(8.91);
 
         data.setTopPerformingPost("5 Xu Hướng Trí Tuệ Nhân Tạo Năm 2026 (7,700 Reach, 550 Likes)");
-        data.setWeeklyAiSummary("Hiệu suất tuần này rất khả quan! Kênh LinkedIn có tỉ lệ tương tác vượt trội (8.9%) nhờ nội dung chuyên sâu kỹ thuật. Kênh Facebook duy trì lượng Reach ổn định với 18,500 lượt xem.");
-        data.setNextWeekAdvice("Đề xuất tuần tới: Đẩy mạnh 3 bài viết chuyên môn về AI Agent trên LinkedIn và bổ sung 1 bài Q&A tương tác cao cho Facebook Page vào tối thứ 5 (khung giờ vàng 20:00).");
+        data.setWeeklyAiSummary("Hiệu suất tuần này rất khả quan! Kênh Threads có tỉ lệ tương tác vượt trội (8.9%) nhờ nội dung ngắn gọn giàu tính thảo luận. Kênh Facebook duy trì lượng Reach ổn định với 18,500 lượt xem.");
+        data.setNextWeekAdvice("Đề xuất tuần tới: Đẩy mạnh 3 bài viết ngắn chủ đề AI Agent trên Threads và bổ sung 1 bài Q&A tương tác cao cho Facebook Page vào tối thứ 5 (khung giờ vàng 20:00).");
 
         List<AnalyticsData.DayMetric> timeline = new ArrayList<>();
         timeline.add(new AnalyticsData.DayMetric("T2", 120, 180));

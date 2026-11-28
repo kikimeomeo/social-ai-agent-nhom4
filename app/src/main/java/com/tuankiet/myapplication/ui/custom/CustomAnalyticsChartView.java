@@ -76,7 +76,7 @@ public class CustomAnalyticsChartView extends View {
         this.data = metrics;
         maxVal = 100;
         for (AnalyticsData.DayMetric m : metrics) {
-            int top = Math.max(m.getFacebookEngagement(), m.getLinkedinEngagement());
+            int top = Math.max(m.getFacebookEngagement(), m.getThreadsEngagement());
             if (top > maxVal) {
                 maxVal = top;
             }
@@ -115,7 +115,7 @@ public class CustomAnalyticsChartView extends View {
             AnalyticsData.DayMetric m = data.get(i);
             float centerX = paddingLeft + i * stepX;
 
-            float totalRatio = (float) (m.getFacebookEngagement() + m.getLinkedinEngagement()) / (maxVal * 1.8f);
+            float totalRatio = (float) (m.getFacebookEngagement() + m.getThreadsEngagement()) / (maxVal * 1.8f);
             float totalY = paddingTop + chartHeight - (chartHeight * Math.min(1.0f, totalRatio));
 
             if (i == 0) {

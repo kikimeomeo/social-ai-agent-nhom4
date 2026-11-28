@@ -120,7 +120,7 @@ public class RealSocialPublisher {
     }
 
     /**
-     * PHƯƠNG ÁN 1: Mở app mạng xã hội thật (Facebook, LinkedIn, Threads) và tự động
+     * PHƯƠNG ÁN 1: Mở app mạng xã hội thật (Facebook, Threads) và tự động
      * sao chép nội dung AI vào Clipboard để người dùng paste & đăng bài thật ngay lập tức!
      */
     public static void shareToRealApp(Activity activity, SocialPlatform platform, String text) {
@@ -138,9 +138,9 @@ public class RealSocialPublisher {
         if (platform == SocialPlatform.FACEBOOK) {
             targetPackage = "com.facebook.katana";
             platformName = "Facebook";
-        } else if (platform == SocialPlatform.LINKEDIN) {
-            targetPackage = "com.linkedin.android";
-            platformName = "LinkedIn";
+        } else if (platform == SocialPlatform.THREADS) {
+            targetPackage = "com.instagram.barcelona";
+            platformName = "Threads";
         }
 
         Intent intent = new Intent(Intent.ACTION_SEND);

@@ -66,12 +66,15 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             binding.tvTopicTitle.setText(post.getTopic());
             binding.tvToneBadge.setText(post.getTone() != null ? post.getTone() : "Chuyên gia");
 
-            String snippet = !post.getContentFacebook().isEmpty() ?
-                    post.getContentFacebook() : post.getContentLinkedIn();
+            String snippet = firstNonEmpty(
+                    post.getContentFacebook(),
+                    post.getContentThreads(),
+                    post.getContentLinkedIn()
+            );
             binding.tvContentSnippet.setText(snippet.replace("\n", " "));
 
             binding.ivFbIcon.setVisibility(post.isTargetFacebook() ? View.VISIBLE : View.GONE);
-            binding.ivLiIcon.setVisibility(post.isTargetLinkedIn() ? View.VISIBLE : View.GONE);
+            binding.ivThreadsIcon.setVisibility((post.isTargetThreads() || post.isTargetLinkedIn()) ? View.VISIBLE : View.GONE);
 
             // Status Badge
             String status = post.getStatus();
@@ -108,6 +111,15 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                     listener.onPostClick(post);
                 }
             });
+        }
+
+        private String firstNonEmpty(String... values) {
+            for (String value : values) {
+                if (value != null && !value.trim().isEmpty()) {
+                    return value;
+                }
+            }
+            return "";
         }
     }
 }

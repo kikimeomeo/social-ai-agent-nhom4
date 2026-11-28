@@ -71,20 +71,13 @@ public class OAuthManager {
                     "&scope=" + Uri.encode("pages_manage_posts,pages_read_engagement,pages_show_list,pages_read_user_content,public_profile") +
                     "&response_type=token" +
                     "&state=facebook";
-        } else if (platform == SocialPlatform.THREADS) {
+        } else {
             authUrl = "https://threads.net/oauth/authorize?" +
                     "client_id=" + THREADS_APP_ID +
                     "&redirect_uri=" + Uri.encode(OAUTH_REDIRECT_URI) +
                     "&scope=" + Uri.encode("threads_basic,threads_content_publish,threads_read_replies,threads_manage_replies") +
                     "&response_type=token" +
                     "&state=threads";
-        } else {
-            authUrl = "https://www.linkedin.com/oauth/v2/authorization?" +
-                    "response_type=code" +
-                    "&client_id=78linkedinclientid" +
-                    "&redirect_uri=" + Uri.encode(OAUTH_REDIRECT_URI) +
-                    "&scope=r_liteprofile%20w_member_social" +
-                    "&state=linkedin";
         }
 
         try {
@@ -153,8 +146,6 @@ public class OAuthManager {
         SocialPlatform platform = SocialPlatform.FACEBOOK;
         if ("threads".equalsIgnoreCase(state)) {
             platform = SocialPlatform.THREADS;
-        } else if ("linkedin".equalsIgnoreCase(state)) {
-            platform = SocialPlatform.LINKEDIN;
         }
 
         if (accessToken != null && !accessToken.trim().isEmpty()) {

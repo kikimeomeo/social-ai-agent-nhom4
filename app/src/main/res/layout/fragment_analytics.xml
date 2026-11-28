@@ -326,7 +326,7 @@
                         android:progressBackgroundTint="@color/bg_soft_fill"
                         android:progressTint="@color/primary" />
 
-                    <!-- Threads Row (keeps tvLi* IDs) -->
+                    <!-- Threads Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -344,7 +344,7 @@
                             android:textStyle="bold" />
 
                         <TextView
-                            android:id="@+id/tvLiReach"
+                            android:id="@+id/tvThreadsReach"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="14,200"
@@ -360,7 +360,7 @@
                             android:textSize="12sp" />
 
                         <TextView
-                            android:id="@+id/tvLiRate"
+                            android:id="@+id/tvThreadsRate"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="3.9%"
@@ -382,8 +382,8 @@
                     <!-- Hidden legacy table fields preserved for AnalyticsFragment binding -->
                     <TextView android:id="@+id/tvFbLikes" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
                     <TextView android:id="@+id/tvFbComments" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
-                    <TextView android:id="@+id/tvLiLikes" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
-                    <TextView android:id="@+id/tvLiComments" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                    <TextView android:id="@+id/tvThreadsLikes" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                    <TextView android:id="@+id/tvThreadsComments" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
