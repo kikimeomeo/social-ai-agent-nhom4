@@ -17,6 +17,7 @@ import com.tuankiet.myapplication.model.LLMConfig;
 import com.tuankiet.myapplication.model.Post;
 import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.util.PostIllustrationGenerator;
+import com.tuankiet.myapplication.util.VisualImageService;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -33,11 +34,19 @@ public class AIAgentOrchestrator {
 
     public interface AgentCallback {
         void onStepChanged(int stepIndex, String stepTitle, String agentName);
+        default void onStepChanged(int stepIndex, int totalSteps, String stepTitle, String agentName) {
+            onStepChanged(stepIndex, stepTitle, agentName);
+        }
         void onStreamFacebookChunk(String fullCurrentText);
         void onStreamLinkedInChunk(String fullCurrentText);
         default void onStreamThreadsChunk(String fullCurrentText) {}
         void onCompleted(Post post);
         void onError(String message);
+    }
+
+    public interface ImageCallback {
+        void onSuccess(String newImageUrl);
+        void onError(String error);
     }
 
     public interface ValidationCallback {
@@ -85,6 +94,9 @@ public class AIAgentOrchestrator {
     private final Gson gson;
     private volatile boolean isCancelled = false;
     private int lastCallTokens = 0;
+    private int lastInputTokens = 0;
+    private int lastOutputTokens = 0;
+    private String lastUsedModel = "gemini-3.1-flash-lite";
 
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
 
@@ -93,6 +105,7 @@ public class AIAgentOrchestrator {
     private static final String GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
     private static final String[] GEMINI_FALLBACK_MODELS = {
             PRIMARY_GEMINI_MODEL,
+            "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
             "gemini-2.0-flash",
             "gemini-1.5-flash"
@@ -143,6 +156,11 @@ public class AIAgentOrchestrator {
 
     public void cancel() {
         isCancelled = true;
+        try {
+            if (httpClient != null && httpClient.dispatcher() != null) {
+                httpClient.dispatcher().cancelAll();
+            }
+        } catch (Exception ignored) {}
     }
 
     public String buildFacebookUserPrompt(String topic, String tone) {
@@ -184,15 +202,30 @@ public class AIAgentOrchestrator {
                 SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
                 LLMConfig config = prefManager.getConfig();
                 boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+                if (!useRealApi) {
+                    lastUsedModel = "demo-mock-engine";
+                } else if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = PRIMARY_GEMINI_MODEL;
+                } else if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = "gpt-4o-mini";
+                }
 
                 // Step 1: Orchestrator Synthesizes Brief
-                notifyStep(callback, 1, "Orchestrator đang lập brief chiến lược...", "Master Orchestrator");
-                Thread.sleep(600);
+                notifyStep(callback, 1, 6, "Orchestrator đang lập brief chiến lược...", "Master Orchestrator");
+                Thread.sleep(400);
                 if (isCancelled) return;
 
                 String brief = "Brief: Topic '" + topic + "', Phong cách: '" + tone + "', Ngôn ngữ: '" + language + "'. Kênh: " +
                         (targetFb ? "Facebook " : "") + (targetThreads ? "Threads " : "") + (targetLi ? "LinkedIn" : "");
                 logStep("Orchestrator Synthesis", "Master Orchestrator", "Topic: " + topic + ", Tone: " + tone + ", Lang: " + language, brief, 350, 0.0014);
+
+                // Step 2: Outline Architect Builds Structure
+                notifyStep(callback, 2, 6, "Outline Architect đang xây dựng khung dàn ý đa kênh...", "Outline Architect");
+                Thread.sleep(400);
+                if (isCancelled) return;
+
+                logStep("Outline Architect", "Outline Specialist", "Dàn ý cho: " + topic,
+                        "1. Hook mở đầu thu hút\n2. Luận điểm thực tiễn\n3. Giá trị cốt lõi\n4. Kêu gọi tương tác (CTA)", 180, 0.0007);
 
                 String fbFull = "";
                 String threadsFull = "";
@@ -201,16 +234,21 @@ public class AIAgentOrchestrator {
                 int threadsTokens = 0;
                 int liTokens = 0;
 
-                // Step 2: Facebook Sub-agent Stream
+                // Step 3: Facebook Sub-agent Stream
                 if (targetFb) {
-                    notifyStep(callback, 2, "Facebook Sub-agent đang viết bài & tạo hook...", "Facebook Agent");
+                    notifyStep(callback, 3, 6, "Facebook Sub-agent đang viết bài & tạo hook...", "Facebook Agent");
                     String fbPrompt = buildFacebookUserPrompt(topic, tone, language);
+                    boolean fbApiFailed = false;
                     if (useRealApi) {
                         try {
-                            fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT);
+                            fbFull = callLlmApi(config, fbPrompt, SYSTEM_PROMPT_FACEBOOK_AGENT, config.getPostGenerationModel());
                             fbTokens = lastCallTokens > 0 ? lastCallTokens : 580;
                         } catch (Exception ex) {
-                            // Fallback to local draft
+                            fbApiFailed = true;
+                            logStep("❌ Facebook Sub-agent (Lỗi API)", "Facebook Specialist", fbPrompt,
+                                    "[LỖI] " + ex.getMessage() + "\n(Đã chuyển sang bản nháp dự phòng)", 0, 0.0);
+                            notifyStep(callback, 3, 6, "⚠️ Lỗi gọi API (" + ex.getMessage() + "), dùng bản nháp dự phòng...", "Facebook Agent");
+                            mainHandler.post(() -> android.widget.Toast.makeText(context, "Lỗi API Facebook: " + ex.getMessage(), android.widget.Toast.LENGTH_LONG).show());
                             fbFull = generateFacebookDraft(topic, tone, language);
                             fbTokens = 580;
                         }
@@ -221,18 +259,27 @@ public class AIAgentOrchestrator {
 
                     streamText(fbFull, callback, true);
                     if (isCancelled) return;
-                    logStep("Facebook Sub-agent", "Facebook Specialist", fbPrompt, fbFull.substring(0, Math.min(80, fbFull.length())) + "...", fbTokens, fbTokens * 0.000004);
+                    if (!fbApiFailed) {
+                        logStep("Facebook Sub-agent", "Facebook Specialist",
+                                formatPromptWithTokens(fbPrompt), truncateForLog(fbFull), fbTokens, fbTokens * 0.000004);
+                    }
                 }
 
-                // Step 3: Threads Sub-agent Stream
+                // Step 4: Threads Sub-agent Stream
                 if (targetThreads) {
-                    notifyStep(callback, 3, "Threads Sub-agent đang tối ưu bài ngắn (≤ 500 ký tự)...", "Threads Agent");
+                    notifyStep(callback, 4, 6, "Threads Sub-agent đang tối ưu bài ngắn (≤ 500 ký tự)...", "Threads Agent");
                     String threadsPrompt = buildThreadsUserPrompt(topic, tone, language);
+                    boolean threadsApiFailed = false;
                     if (useRealApi) {
                         try {
-                            threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT);
+                            threadsFull = callLlmApi(config, threadsPrompt, SYSTEM_PROMPT_THREADS_AGENT, config.getPostGenerationModel());
                             threadsTokens = lastCallTokens > 0 ? lastCallTokens : 420;
                         } catch (Exception ex) {
+                            threadsApiFailed = true;
+                            logStep("❌ Threads Sub-agent (Lỗi API)", "Threads Specialist", threadsPrompt,
+                                    "[LỖI] " + ex.getMessage() + "\n(Đã chuyển sang bản nháp dự phòng)", 0, 0.0);
+                            notifyStep(callback, 4, 6, "⚠️ Lỗi gọi API (" + ex.getMessage() + "), dùng bản nháp dự phòng...", "Threads Agent");
+                            mainHandler.post(() -> android.widget.Toast.makeText(context, "Lỗi API Threads: " + ex.getMessage(), android.widget.Toast.LENGTH_LONG).show());
                             threadsFull = generateThreadsDraft(topic, tone, language);
                             threadsTokens = 420;
                         }
@@ -243,18 +290,24 @@ public class AIAgentOrchestrator {
 
                     streamThreadsChunk(threadsFull, callback);
                     if (isCancelled) return;
-                    logStep("Threads Sub-agent", "Threads Specialist", threadsPrompt, threadsFull.substring(0, Math.min(80, threadsFull.length())) + "...", threadsTokens, threadsTokens * 0.000004);
+                    if (!threadsApiFailed) {
+                        logStep("Threads Sub-agent", "Threads Specialist",
+                                formatPromptWithTokens(threadsPrompt), truncateForLog(threadsFull), threadsTokens, threadsTokens * 0.000004);
+                    }
                 }
 
-                // Step 4: LinkedIn Sub-agent Stream (compat)
+                // Step 4b: LinkedIn Sub-agent Stream (compat)
                 if (targetLi) {
-                    notifyStep(callback, 4, "LinkedIn Sub-agent đang tối ưu hóa B2B insights...", "LinkedIn Agent");
                     String liPrompt = buildLinkedInUserPrompt(topic, tone);
+                    boolean liApiFailed = false;
                     if (useRealApi) {
                         try {
-                            liFull = callLlmApi(config, liPrompt, SYSTEM_PROMPT_LINKEDIN_AGENT);
+                            liFull = callLlmApi(config, liPrompt, SYSTEM_PROMPT_LINKEDIN_AGENT, config.getPostGenerationModel());
                             liTokens = lastCallTokens > 0 ? lastCallTokens : 720;
                         } catch (Exception ex) {
+                            liApiFailed = true;
+                            logStep("❌ LinkedIn Sub-agent (Lỗi API)", "LinkedIn Strategist", liPrompt,
+                                    "[LỖI] " + ex.getMessage(), 0, 0.0);
                             liFull = generateLinkedInDraft(topic, tone, language);
                             liTokens = 720;
                         }
@@ -265,11 +318,14 @@ public class AIAgentOrchestrator {
 
                     streamText(liFull, callback, false);
                     if (isCancelled) return;
-                    logStep("LinkedIn Sub-agent", "LinkedIn Strategist", liPrompt, liFull.substring(0, Math.min(80, liFull.length())) + "...", liTokens, liTokens * 0.000004);
+                    if (!liApiFailed) {
+                        logStep("LinkedIn Sub-agent", "LinkedIn Strategist",
+                                formatPromptWithTokens(liPrompt), truncateForLog(liFull), liTokens, liTokens * 0.000004);
+                    }
                 }
 
                 // Step 5: Visual Agent & Packaging
-                notifyStep(callback, 5, "Visual Agent đang tạo prompt & dựng ảnh minh họa...", "Visual Agent");
+                notifyStep(callback, 5, 6, "Visual Agent đang tạo prompt & dựng ảnh minh họa...", "Visual Agent");
                 if (isCancelled) return;
 
                 SocialPlatform primaryVisualPlatform = targetFb
@@ -279,10 +335,16 @@ public class AIAgentOrchestrator {
                 PostIllustrationGenerator.GeneratedIllustration illustration = generateIllustrationSync(
                         topic, primaryVisualContent, primaryVisualPlatform, null, 0
                 );
+                logStep("Visual Agent", "Visual Designer", illustration.imagePrompt,
+                        "Generated visual illustration.", 240, 0.001);
+
+                // Step 6: Packaging Engine Checks Rules & Packages Post
+                notifyStep(callback, 6, 6, "Packaging Engine đang kiểm tra quy tắc kênh & đóng gói...", "Packaging Engine");
+                Thread.sleep(300);
                 if (isCancelled) return;
 
                 // Record token metrics in SecurePreferenceManager
-                int totalNewTokens = fbTokens + threadsTokens + liTokens + 350 + 240;
+                int totalNewTokens = fbTokens + threadsTokens + liTokens + 350 + 180 + 240;
                 double totalNewCost = totalNewTokens * 0.000004; // ~$0.004 per 1k tokens
                 prefManager.addTokens(totalNewTokens, totalNewCost);
 
@@ -327,13 +389,20 @@ public class AIAgentOrchestrator {
                 SecurePreferenceManager prefManager = SecurePreferenceManager.getInstance(context);
                 LLMConfig config = prefManager.getConfig();
                 boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+                if (!useRealApi) {
+                    lastUsedModel = "demo-mock-engine";
+                } else if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = PRIMARY_GEMINI_MODEL;
+                } else if (LLMConfig.PROVIDER_OPENAI.equalsIgnoreCase(config.getProvider())) {
+                    lastUsedModel = "gpt-4o-mini";
+                }
 
                 if (platformIndex == 0) {
                     notifyStep(callback, 2, "Facebook Sub-agent đang viết lại bản mới...", "Facebook Agent");
                     String newFb;
                     if (useRealApi) {
                         try {
-                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_FACEBOOK_AGENT);
+                            newFb = callLlmApi(config, buildFacebookUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_FACEBOOK_AGENT, config.getPostGenerationModel());
                         } catch (Exception ex) {
                             newFb = generateFacebookDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
@@ -347,7 +416,7 @@ public class AIAgentOrchestrator {
                     String newThreads;
                     if (useRealApi) {
                         try {
-                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_THREADS_AGENT);
+                            newThreads = callLlmApi(config, buildThreadsUserPrompt(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage()), SYSTEM_PROMPT_THREADS_AGENT, config.getPostGenerationModel());
                         } catch (Exception ex) {
                             newThreads = generateThreadsDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
@@ -361,7 +430,7 @@ public class AIAgentOrchestrator {
                     String newLi;
                     if (useRealApi) {
                         try {
-                            newLi = callLlmApi(config, buildLinkedInUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_LINKEDIN_AGENT);
+                            newLi = callLlmApi(config, buildLinkedInUserPrompt(currentPost.getTopic(), currentPost.getTone()), SYSTEM_PROMPT_LINKEDIN_AGENT, config.getPostGenerationModel());
                         } catch (Exception ex) {
                             newLi = generateLinkedInDraft(currentPost.getTopic(), currentPost.getTone(), currentPost.getLanguage());
                         }
@@ -741,7 +810,7 @@ public class AIAgentOrchestrator {
                 String prompt = "Bài viết gốc: \"" + postText + "\"\n" +
                         "Người bình luận @" + commenterUsername + " viết: \"" + commentText + "\"\n" +
                         "Hãy viết câu trả lời phù hợp nhất:";
-                String aiReply = callLlmApi(config, prompt, systemPrompt).trim();
+                String aiReply = callLlmApi(config, prompt, systemPrompt, config.getCommentClassificationModel()).trim();
                 if (aiReply.startsWith("\"") && aiReply.endsWith("\"") && aiReply.length() > 2) {
                     aiReply = aiReply.substring(1, aiReply.length() - 1).trim();
                 }
@@ -863,17 +932,41 @@ public class AIAgentOrchestrator {
 
     // --- REAL API CALL VIA OKHTTP (Google Gemini / OpenAI / OpenRouter) ---
     private String callLlmApi(LLMConfig config, String prompt, String systemPrompt) throws IOException {
-        LlmResponse response = callLlmApiWithMeta(config, prompt, systemPrompt);
+        return callLlmApi(config, prompt, systemPrompt, config.getPostGenerationModel());
+    }
+
+    private String callLlmApi(LLMConfig config, String prompt, String systemPrompt, String preferredModel) throws IOException {
+        LlmResponse response = callLlmApiWithMeta(config, prompt, systemPrompt, preferredModel);
         lastCallTokens = response.totalTokens;
         return response.text;
     }
 
     private LlmResponse callLlmApiWithMeta(LLMConfig config, String prompt, String systemPrompt) throws IOException {
+        return callLlmApiWithMeta(config, prompt, systemPrompt, config.getPostGenerationModel());
+    }
+
+    private LlmResponse callLlmApiWithMeta(LLMConfig config, String prompt, String systemPrompt, String preferredModel) throws IOException {
+        lastCallTokens = 0;
+        lastInputTokens = 0;
+        lastOutputTokens = 0;
         String cleanApiKey = config.getApiKey() != null ? config.getApiKey().trim().replace("\"", "").replace("'", "") : "";
         if (LLMConfig.PROVIDER_GEMINI.equalsIgnoreCase(config.getProvider())) {
             IOException lastEx = null;
 
-            for (String model : GEMINI_FALLBACK_MODELS) {
+            String[] modelsToTry;
+            if (preferredModel != null && !preferredModel.trim().isEmpty()) {
+                modelsToTry = new String[] {
+                    preferredModel,
+                    PRIMARY_GEMINI_MODEL,
+                    "gemini-2.5-flash-lite",
+                    "gemini-2.0-flash",
+                    "gemini-1.5-flash"
+                };
+            } else {
+                modelsToTry = GEMINI_FALLBACK_MODELS;
+            }
+
+            for (String model : modelsToTry) {
                 String url = GEMINI_BASE_URL + model + ":generateContent?key=" + cleanApiKey;
 
                 JsonObject root = new JsonObject();
@@ -919,10 +1012,17 @@ public class AIAgentOrchestrator {
                         int tokens = 0;
                         if (parsed.has("usageMetadata")) {
                             JsonObject usage = parsed.getAsJsonObject("usageMetadata");
+                            if (usage.has("promptTokenCount")) {
+                                lastInputTokens = usage.get("promptTokenCount").getAsInt();
+                            }
+                            if (usage.has("candidatesTokenCount")) {
+                                lastOutputTokens = usage.get("candidatesTokenCount").getAsInt();
+                            }
                             if (usage.has("totalTokenCount")) {
                                 tokens = usage.get("totalTokenCount").getAsInt();
                             }
                         }
+                        lastUsedModel = model;
                         if (parsed.has("candidates") && parsed.getAsJsonArray("candidates").size() > 0) {
                             JsonObject candidate = parsed.getAsJsonArray("candidates").get(0).getAsJsonObject();
                             if (candidate.has("content") && candidate.getAsJsonObject("content").has("parts")) {
@@ -966,7 +1066,8 @@ public class AIAgentOrchestrator {
                     "https://api.openai.com/v1/chat/completions";
 
             JsonObject root = new JsonObject();
-            root.addProperty("model", "gpt-4o-mini");
+            String modelToUse = (preferredModel != null && !preferredModel.trim().isEmpty()) ? preferredModel : "gpt-4o-mini";
+            root.addProperty("model", modelToUse);
             JsonArray msgs = new JsonArray();
 
             JsonObject sys = new JsonObject();
@@ -991,10 +1092,21 @@ public class AIAgentOrchestrator {
                 if (resp.isSuccessful() && resp.body() != null) {
                     String json = resp.body().string();
                     JsonObject parsed = JsonParser.parseString(json).getAsJsonObject();
-                    int tokens = 0;
-                    if (parsed.has("usage") && parsed.getAsJsonObject("usage").has("total_tokens")) {
-                        tokens = parsed.getAsJsonObject("usage").get("total_tokens").getAsInt();
+                    if (parsed.has("usage")) {
+                        JsonObject usage = parsed.getAsJsonObject("usage");
+                        if (usage.has("prompt_tokens")) {
+                            lastInputTokens = usage.get("prompt_tokens").getAsInt();
+                        }
+                        if (usage.has("completion_tokens")) {
+                            lastOutputTokens = usage.get("completion_tokens").getAsInt();
+                        }
+                        if (usage.has("total_tokens")) {
+                            lastCallTokens = usage.get("total_tokens").getAsInt();
+                        }
                     }
+                    int tokens = lastCallTokens > 0 ? lastCallTokens : (lastInputTokens + lastOutputTokens);
+                    lastUsedModel = LLMConfig.PROVIDER_OPENROUTER.equalsIgnoreCase(config.getProvider()) ?
+                            "openrouter/auto" : "gpt-4o-mini";
                     String text = parsed.getAsJsonArray("choices")
                             .get(0).getAsJsonObject()
                             .getAsJsonObject("message")
@@ -1048,7 +1160,72 @@ public class AIAgentOrchestrator {
     }
 
     private void notifyStep(AgentCallback callback, int stepIndex, String title, String agent) {
-        mainHandler.post(() -> callback.onStepChanged(stepIndex, title, agent));
+        notifyStep(callback, stepIndex, 6, title, agent);
+    }
+
+    private void notifyStep(AgentCallback callback, int stepIndex, int totalSteps, String title, String agent) {
+        mainHandler.post(() -> callback.onStepChanged(stepIndex, totalSteps, title, agent));
+    }
+
+    public void regenerateImage(Context ctx, String topic, String platform, int styleIndex, ImageCallback callback) {
+        executorService.execute(() -> {
+            try {
+                LLMConfig config = SecurePreferenceManager.getInstance(ctx).getConfig();
+                boolean useRealApi = !config.isDemoMode() && config.getApiKey() != null && !config.getApiKey().trim().isEmpty();
+                VisualImageService.VisualSpec visualSpec = buildVisualSpec(config, useRealApi, topic);
+                VisualImageService.ImageResult result = VisualImageService.generateOrFetchImage(
+                        ctx, httpClient, visualSpec, topic, platform, styleIndex);
+                String newUri = result.localUri;
+                if (newUri != null && !newUri.isEmpty()) {
+                    mainHandler.post(() -> callback.onSuccess(newUri));
+                } else {
+                    mainHandler.post(() -> callback.onError("Không thể tạo ảnh minh họa mới."));
+                }
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError("Lỗi sinh ảnh: " + e.getMessage()));
+            }
+        });
+    }
+
+    private VisualImageService.VisualSpec buildVisualSpec(LLMConfig config, boolean useRealApi, String topic) {
+        if (useRealApi && topic != null && !topic.trim().isEmpty()) {
+            try {
+                String systemPrompt = "You are a visual art director. Return ONLY raw JSON with 2 keys: \"prompt\" and \"keywords\".";
+                String userPrompt = "Topic: \"" + topic + "\"\n"
+                        + "1. \"prompt\": Write a 15-word concrete English scene description for an editorial cover photo directly matching the context and subject of this topic. Include 'no text, no watermark'.\n"
+                        + "2. \"keywords\": 2 to 3 simple English nouns for photo search.\n"
+                        + "Return ONLY JSON: {\"prompt\":\"...\",\"keywords\":\"...\"}";
+                String reply = callLlmApi(config, userPrompt, systemPrompt);
+                if (reply != null) {
+                    int start = reply.indexOf('{');
+                    int end = reply.lastIndexOf('}');
+                    if (start >= 0 && end > start) {
+                        JsonObject json = JsonParser.parseString(reply.substring(start, end + 1)).getAsJsonObject();
+                        String aiPrompt = json.has("prompt") ? json.get("prompt").getAsString().trim() : "";
+                        String keywords = json.has("keywords") ? json.get("keywords").getAsString().trim() : "";
+                        if (!aiPrompt.isEmpty() && !keywords.isEmpty()) {
+                            return new VisualImageService.VisualSpec(aiPrompt, keywords);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // Fallback gracefully to local spec builder
+            }
+        }
+        return VisualImageService.buildLocalVisualSpec(topic);
+    }
+
+    private String formatPromptWithTokens(String prompt) {
+        if (lastInputTokens > 0 || lastOutputTokens > 0) {
+            return "[Token Input: " + lastInputTokens + " | Output: " + lastOutputTokens + "]\n\n" + prompt;
+        }
+        return prompt;
+    }
+
+    private String truncateForLog(String text) {
+        if (text == null) return "";
+        if (text.length() <= 2000) return text;
+        return text.substring(0, 2000) + "\n...(đã rút gọn)";
     }
 
     private void logStep(String step, String agent, String prompt, String output, int tokens, double cost) {
@@ -1056,7 +1233,8 @@ public class AIAgentOrchestrator {
     }
 
     private void logStepWithDuration(String step, String agent, String prompt, String output, int tokens, double cost, long durationMs) {
-        AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, durationMs);
+        AgentLog log = new AgentLog(0, System.currentTimeMillis(), step, agent, prompt, output, tokens, cost, durationMs,
+                lastUsedModel != null ? lastUsedModel : "gemini-3.1-flash-lite");
         DatabaseHelper.getInstance(context).insertLog(log);
     }
 

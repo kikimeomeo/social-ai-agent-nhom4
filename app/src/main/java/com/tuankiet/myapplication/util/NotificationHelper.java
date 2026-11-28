@@ -71,5 +71,41 @@ public class NotificationHelper {
         String msg = item.getContent();
         showNotification(context, title, msg);
     }
+
+    public static void showPostPublishedNotification(Context context, String title, String message, String postUrl) {
+        createNotificationChannel(context);
+
+        PendingIntent pendingIntent;
+        if (postUrl != null && !postUrl.trim().isEmpty() && (postUrl.startsWith("http://") || postUrl.startsWith("https://"))) {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(postUrl));
+            browserIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            pendingIntent = PendingIntent.getActivity(
+                    context, (int) System.currentTimeMillis(), browserIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+            );
+        } else {
+            Intent intent = new Intent(context, MainActivity.class);
+            intent.putExtra("target_tab", R.id.nav_home);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            pendingIntent = PendingIntent.getActivity(
+                    context, 0, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+            );
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_sparkles)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+
+        try {
+            NotificationManagerCompat.from(context).notify((int) System.currentTimeMillis(), builder.build());
+        } catch (SecurityException ignored) {
+        }
+    }
 }
 

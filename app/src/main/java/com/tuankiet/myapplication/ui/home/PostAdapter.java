@@ -79,6 +79,10 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
                 binding.tvStatusBadge.setText("Đã Đăng");
                 binding.tvStatusBadge.setTextColor(Color.parseColor("#10B981"));
                 binding.tvStatusBadge.setBackgroundColor(Color.parseColor("#ECFDF5"));
+            } else if (Post.STATUS_PENDING.equals(status)) {
+                binding.tvStatusBadge.setText("Hàng Đợi (Offline)");
+                binding.tvStatusBadge.setTextColor(Color.parseColor("#2563EB"));
+                binding.tvStatusBadge.setBackgroundColor(Color.parseColor("#EFF6FF"));
             } else if (Post.STATUS_DRAFT.equals(status)) {
                 binding.tvStatusBadge.setText("Bản Nháp");
                 binding.tvStatusBadge.setTextColor(Color.parseColor("#F59E0B"));

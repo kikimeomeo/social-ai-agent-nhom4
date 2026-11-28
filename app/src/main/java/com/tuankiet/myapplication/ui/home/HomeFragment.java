@@ -59,10 +59,20 @@ public class HomeFragment extends Fragment {
         binding.bannerPendingComments.setOnClickListener(v -> navigateTo(R.id.nav_inbox));
         binding.tvManageChannels.setOnClickListener(v -> navigateTo(R.id.nav_settings));
 
+        binding.cardFbChannel.setOnClickListener(v -> openChannelDetail(SocialPlatform.FACEBOOK));
+        binding.cardThreadsChannel.setOnClickListener(v -> openChannelDetail(SocialPlatform.THREADS));
+
         binding.tvViewAll.setOnClickListener(v -> {
             loadData();
             Toast.makeText(getContext(), "Đã cập nhật dữ liệu mới nhất!", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void openChannelDetail(SocialPlatform platform) {
+        com.tuankiet.myapplication.ui.settings.ChannelDetailDialogFragment dialog =
+                com.tuankiet.myapplication.ui.settings.ChannelDetailDialogFragment.newInstance(platform);
+        dialog.setOnDismissCallback(this::loadData);
+        dialog.show(getParentFragmentManager(), "ChannelDetailDialog_" + platform.name());
     }
 
     private void navigateTo(int tabId) {
@@ -122,10 +132,13 @@ public class HomeFragment extends Fragment {
                 binding.tvFbPageName.setText(fbName);
                 binding.tvFbFollowers.setText(acc.getFollowerCount() + " người theo dõi");
                 binding.tvFbStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
-            } else if (acc.getPlatform() == SocialPlatform.LINKEDIN) {
-                binding.tvLiProfileName.setText("@aitech.vn");
-                binding.tvLiFollowers.setText(acc.getFollowerCount() + " kết nối");
+                binding.tvFbStatus.setTextColor(getResources().getColor(acc.isConnected() ? R.color.status_green : R.color.text_muted));
+            } else if (acc.getPlatform() == SocialPlatform.THREADS || acc.getPlatform() == SocialPlatform.LINKEDIN) {
+                String thName = acc.getHandle() != null ? acc.getHandle() : "@aitech.vn";
+                binding.tvLiProfileName.setText(thName);
+                binding.tvLiFollowers.setText(acc.getFollowerCount() + " người theo dõi");
                 binding.tvLiStatus.setText(acc.isConnected() ? "● Đã kết nối" : "○ Chưa kết nối");
+                binding.tvLiStatus.setTextColor(getResources().getColor(acc.isConnected() ? R.color.status_green : R.color.text_muted));
             }
         }
 

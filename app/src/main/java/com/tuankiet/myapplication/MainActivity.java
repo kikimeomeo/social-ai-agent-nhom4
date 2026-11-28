@@ -82,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
                 public void onSuccess(SocialPlatform platform, String message) {
                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                     homeFragment.loadData();
+                    if (settingsFragment.isAdded()) {
+                        settingsFragment.loadSettings();
+                    }
                 }
 
                 @Override
