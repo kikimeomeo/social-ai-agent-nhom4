@@ -676,6 +676,40 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return empty;
     }
 
+    public long upsertDailyAnalyticsSnapshot(String platform, int reach, int likes, int comments, int shares, int followerCount) {
+        String targetPlatform = platform != null ? platform : "ALL";
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long startOfDay = cal.getTimeInMillis();
+
+        ContentValues cv = new ContentValues();
+        cv.put("timestamp", System.currentTimeMillis());
+        cv.put("platform", targetPlatform);
+        cv.put("reach", reach);
+        cv.put("likes", likes);
+        cv.put("comments", comments);
+        cv.put("shares", shares);
+        cv.put("follower_count", followerCount);
+
+        SQLiteDatabase db = getWritableDatabase();
+        long existingId = -1L;
+        try (Cursor cursor = db.rawQuery(
+                "SELECT id FROM analytics_history WHERE platform = ? AND timestamp >= ? ORDER BY timestamp DESC LIMIT 1",
+                new String[]{targetPlatform, String.valueOf(startOfDay)})) {
+            if (cursor.moveToFirst()) {
+                existingId = cursor.getLong(0);
+            }
+        }
+        if (existingId > 0) {
+            db.update("analytics_history", cv, "id = ?", new String[]{String.valueOf(existingId)});
+            return existingId;
+        }
+        return db.insert("analytics_history", null, cv);
+    }
+
     public long insertAnalyticsSnapshot(String platform, int reach, int likes, int comments, int shares, int followerCount) {
         ContentValues cv = new ContentValues();
         cv.put("timestamp", System.currentTimeMillis());
@@ -692,32 +726,35 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public List<AnalyticsData.DayMetric> getAnalyticsHistory() {
         List<AnalyticsData.DayMetric> list = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM analytics_history ORDER BY timestamp DESC LIMIT 7", null);
+        Cursor cursor = db.rawQuery("SELECT likes, comments FROM analytics_history ORDER BY timestamp DESC LIMIT 7", null);
 
-        List<Integer> dbLikes = new ArrayList<>();
-        List<Integer> dbComments = new ArrayList<>();
+        List<Integer> dbTotalsDesc = new ArrayList<>();
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                dbLikes.add(cursor.getInt(cursor.getColumnIndexOrThrow("likes")));
-                dbComments.add(cursor.getInt(cursor.getColumnIndexOrThrow("comments")));
+                int likes = cursor.getInt(cursor.getColumnIndexOrThrow("likes"));
+                int comments = cursor.getInt(cursor.getColumnIndexOrThrow("comments"));
+                dbTotalsDesc.add(likes + comments);
             } while (cursor.moveToNext());
             cursor.close();
         }
 
+        // Order chronological oldest -> newest ending at CN, scaling missing days smoothly around latest total
         String[] days = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
+        double[] baselineScale = {0.42, 0.54, 0.68, 0.61, 0.78, 0.90, 1.00};
+        int latestTotal = !dbTotalsDesc.isEmpty() ? Math.max(100, dbTotalsDesc.get(0)) : 500;
+        int offset = 7 - dbTotalsDesc.size();
+
         for (int i = 0; i < 7; i++) {
-            String dayLabel = days[i];
-            int fbEng;
-            int thEng;
-            if (i < dbLikes.size()) {
-                int total = dbLikes.get(i) + dbComments.get(i);
-                fbEng = Math.max(45, (int)(total * 0.55));
-                thEng = Math.max(35, (int)(total * 0.45));
+            int dayTotal;
+            if (i >= offset) {
+                int descIdx = (dbTotalsDesc.size() - 1) - (i - offset);
+                dayTotal = Math.max(80, dbTotalsDesc.get(descIdx));
             } else {
-                fbEng = 120 + (i * 22);
-                thEng = 90 + (i * 18);
+                dayTotal = Math.max(80, (int) (latestTotal * baselineScale[i]));
             }
-            list.add(new AnalyticsData.DayMetric(dayLabel, fbEng, thEng));
+            int fbEng = Math.max(45, (int) (dayTotal * 0.55));
+            int thEng = Math.max(35, (int) (dayTotal * 0.45));
+            list.add(new AnalyticsData.DayMetric(days[i], fbEng, thEng));
         }
         return list;
     }

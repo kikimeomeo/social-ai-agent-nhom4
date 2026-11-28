@@ -138,6 +138,9 @@ public class RealSocialPublisher {
         if (platform == SocialPlatform.FACEBOOK) {
             targetPackage = "com.facebook.katana";
             platformName = "Facebook";
+        } else if (platform == SocialPlatform.THREADS) {
+            targetPackage = "com.instagram.barcelona";
+            platformName = "Threads";
         } else if (platform == SocialPlatform.LINKEDIN) {
             targetPackage = "com.linkedin.android";
             platformName = "LinkedIn";

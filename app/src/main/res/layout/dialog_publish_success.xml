@@ -208,12 +208,13 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- LinkedIn Item -->
+        <!-- LinkedIn Item (hidden for FB & Threads scope) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardSuccessLinkedIn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
+            android:visibility="gone"
             app:cardBackgroundColor="@color/bg_main"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"

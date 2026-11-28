@@ -23,6 +23,7 @@ import com.tuankiet.myapplication.agent.AIAgentOrchestrator;
 import com.tuankiet.myapplication.agent.PostReviewPolicy;
 import com.tuankiet.myapplication.databinding.FragmentCreatePostBinding;
 import com.tuankiet.myapplication.model.Post;
+import com.tuankiet.myapplication.model.SocialAccount;
 import com.tuankiet.myapplication.model.SocialPlatform;
 import com.tuankiet.myapplication.repository.MockDataRepository;
 import com.tuankiet.myapplication.ui.preview.PreviewDialogFragment;
@@ -1013,25 +1014,35 @@ public class CreatePostFragment extends Fragment {
         updateReviewTabContent();
     }
 
+    private String resolveConnectedAuthorLabel(SocialPlatform platform, String fallbackLabel) {
+        if (getContext() == null) return fallbackLabel;
+        for (SocialAccount acc : MockDataRepository.getInstance(requireContext()).getAccounts()) {
+            if (acc.getPlatform() == platform) {
+                if (platform == SocialPlatform.THREADS && acc.getHandle() != null && !acc.getHandle().trim().isEmpty()) {
+                    return acc.getHandle().trim() + " (Threads)";
+                }
+                if (acc.getAccountName() != null && !acc.getAccountName().trim().isEmpty()) {
+                    return acc.getAccountName().trim() + (platform == SocialPlatform.FACEBOOK ? " (Facebook Page)" : " (Threads)");
+                }
+            }
+        }
+        return fallbackLabel;
+    }
+
     private void updateReviewTabContent() {
         if (currentPost == null || binding == null) return;
 
         String contentToShow;
         if (currentReviewPlatform == 0) {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_facebook);
-            binding.tvReviewAuthorName.setText("AI Tech Vietnam (Facebook Page)");
+            binding.tvReviewAuthorName.setText(resolveConnectedAuthorLabel(SocialPlatform.FACEBOOK, "Facebook Page"));
             binding.tvReviewSubInfo.setText("Vừa xong • 🌐 Công khai");
             contentToShow = currentPost.getContentFacebook();
-        } else if (currentReviewPlatform == 1) {
+        } else {
             binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_threads);
-            binding.tvReviewAuthorName.setText("@aitech_vietnam (Threads)");
+            binding.tvReviewAuthorName.setText(resolveConnectedAuthorLabel(SocialPlatform.THREADS, "Threads Account"));
             binding.tvReviewSubInfo.setText("Vừa xong • 🧵 Cuộc trò chuyện mở");
             contentToShow = currentPost.getContentThreads();
-        } else {
-            binding.ivReviewPlatformIcon.setImageResource(R.drawable.ic_linkedin);
-            binding.tvReviewAuthorName.setText("Nguyen Van A (Tech Lead)");
-            binding.tvReviewSubInfo.setText("Vừa xong • 👔 Kết nối mạng lưới");
-            contentToShow = currentPost.getContentLinkedIn();
         }
 
         isSyncingReviewEditor = true;
@@ -1046,9 +1057,15 @@ public class CreatePostFragment extends Fragment {
                 com.tuankiet.myapplication.databinding.DialogThreadsPublishBinding.inflate(getLayoutInflater());
         threadsDialog.setContentView(dialogBinding.getRoot());
 
-        String savedToken = com.tuankiet.myapplication.data.SecurePreferenceManager.getInstance(requireContext()).getThreadsToken();
+        com.tuankiet.myapplication.data.SecurePreferenceManager prefs =
+                com.tuankiet.myapplication.data.SecurePreferenceManager.getInstance(requireContext());
+        String savedToken = prefs.getThreadsToken();
         if (savedToken != null && !savedToken.isEmpty()) {
             dialogBinding.etThreadsAccessToken.setText(savedToken);
+        }
+        String savedUserId = prefs.getThreadsUserId();
+        if (savedUserId != null && !savedUserId.isEmpty() && !"me".equals(savedUserId)) {
+            dialogBinding.etThreadsUserId.setText(savedUserId);
         }
 
         dialogBinding.btnCancelThreadsDialog.setOnClickListener(d -> threadsDialog.dismiss());
@@ -1061,8 +1078,16 @@ public class CreatePostFragment extends Fragment {
                 return;
             }
 
-            // Save token for next time
-            com.tuankiet.myapplication.data.SecurePreferenceManager.getInstance(requireContext()).saveThreadsToken(token);
+            // Preserve existing authenticated profile metadata instead of overwriting with defaults
+            String effectiveUserId = !userId.isEmpty() ? userId : prefs.getThreadsUserId();
+            if (effectiveUserId == null || effectiveUserId.trim().isEmpty()) {
+                effectiveUserId = "me";
+            }
+            String existingUsername = prefs.getThreadsUsername();
+            if (existingUsername == null || existingUsername.trim().isEmpty()) {
+                existingUsername = "threads_user";
+            }
+            prefs.saveThreadsAccount(effectiveUserId, existingUsername, token, prefs.getThreadsRefreshToken(), 60L * 86400L);
 
             Toast.makeText(getContext(), "Đang gửi bài viết lên Official Threads API...", Toast.LENGTH_SHORT).show();
             final android.content.Context appContext =
@@ -1243,7 +1268,10 @@ public class CreatePostFragment extends Fragment {
         // Facebook
         if (post.isTargetFacebook()) {
             dialogBinding.cardSuccessFacebook.setVisibility(View.VISIBLE);
-            dialogBinding.tvSuccessFacebookUrl.setText("https://facebook.com/socialai/posts/" + randSeed);
+            String fbUrl = (post.getFbPostUrl() != null && !post.getFbPostUrl().trim().isEmpty())
+                    ? post.getFbPostUrl()
+                    : "https://facebook.com/socialai/posts/" + randSeed;
+            dialogBinding.tvSuccessFacebookUrl.setText(fbUrl);
             dialogBinding.tvSuccessFacebookUrl.setOnClickListener(v -> {
                 try {
                     Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(dialogBinding.tvSuccessFacebookUrl.getText().toString()));
@@ -1257,7 +1285,10 @@ public class CreatePostFragment extends Fragment {
         // Threads
         if (post.isTargetThreads()) {
             dialogBinding.cardSuccessThreads.setVisibility(View.VISIBLE);
-            dialogBinding.tvSuccessThreadsUrl.setText("https://threads.net/@socialai/post/" + (randSeed + 12));
+            String threadsUrl = (post.getThreadsPostUrl() != null && !post.getThreadsPostUrl().trim().isEmpty())
+                    ? post.getThreadsPostUrl()
+                    : "https://threads.net/@socialai/post/" + (randSeed + 12);
+            dialogBinding.tvSuccessThreadsUrl.setText(threadsUrl);
             dialogBinding.tvSuccessThreadsUrl.setOnClickListener(v -> {
                 try {
                     Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(dialogBinding.tvSuccessThreadsUrl.getText().toString()));
@@ -1268,19 +1299,7 @@ public class CreatePostFragment extends Fragment {
             dialogBinding.cardSuccessThreads.setVisibility(View.GONE);
         }
 
-        // LinkedIn
-        if (post.isTargetLinkedIn()) {
-            dialogBinding.cardSuccessLinkedIn.setVisibility(View.VISIBLE);
-            dialogBinding.tvSuccessLinkedInUrl.setText("https://linkedin.com/feed/update/urn:li:activity:" + (randSeed + 55));
-            dialogBinding.tvSuccessLinkedInUrl.setOnClickListener(v -> {
-                try {
-                    Intent browser = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(dialogBinding.tvSuccessLinkedInUrl.getText().toString()));
-                    startActivity(browser);
-                } catch (Exception ignored) {}
-            });
-        } else {
-            dialogBinding.cardSuccessLinkedIn.setVisibility(View.GONE);
-        }
+        dialogBinding.cardSuccessLinkedIn.setVisibility(View.GONE);
 
         dialogBinding.btnSuccessGoDashboard.setOnClickListener(v -> {
             dialog.dismiss();

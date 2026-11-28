@@ -45,8 +45,8 @@ public class AnalyticsFragment extends Fragment {
 
         AnalyticsData data = repository.getAnalyticsData();
 
-        // Persist snapshot to SQLite history
-        DatabaseHelper.getInstance(requireContext()).insertAnalyticsSnapshot(
+        // Persist at most one snapshot per day to avoid inflating chart bars on every tab switch
+        DatabaseHelper.getInstance(requireContext()).upsertDailyAnalyticsSnapshot(
                 "ALL", data.getTotalReach(), data.getTotalLikes(), data.getTotalComments(), 0, 1540
         );
 
@@ -77,7 +77,10 @@ public class AnalyticsFragment extends Fragment {
 
         // 3. AI Weekly Summary Report
         binding.tvTopPost.setText(data.getTopPerformingPost());
-        binding.tvWeeklySummary.setText(data.getWeeklyAiSummary());
+        String summary = data.getWeeklyAiSummary() != null
+                ? data.getWeeklyAiSummary().replace("LinkedIn", "Threads")
+                : "";
+        binding.tvWeeklySummary.setText(summary);
         String advice = data.getNextWeekAdvice() != null
                 ? data.getNextWeekAdvice().replace("LinkedIn", "Threads")
                 : "";
